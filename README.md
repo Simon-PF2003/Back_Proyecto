@@ -51,4 +51,4 @@ TERMINADOS
 Caso de uso: Conformar pedido: LISTO
 Caso de uso: Cancelar pedido: Listo 
 Caso de uso: Agrupar por categoría: LISTO
-Caso de uso: Registrar Cliente: LISTO (Se agrego userController para un listado de clientes pendientes de aceptacion y el atributo que corresponde en la BD y en el model. Tambien se agregaron funciones en routes-user.js para aceptar o rechazar al usuario y obtener el listado del que hable antes )
+Caso de uso: Registrar Cliente: LISTO (Se agrego userController para un listado de clientes pendientes de aceptacion y el atributo que corresponde en la BD y en el model. Tambien se agregaron funciones en routes-user.js para aceptar o rechazar al usuario y obtener el listado del que hable antes. Se modificaron funciones de registro y login para que el hasheo de contraseña y su asignación se realicen al aceptar al usuario y para que se valide que fue aceptado antes de ingresar )
