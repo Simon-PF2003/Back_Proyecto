@@ -6,9 +6,6 @@ Parte back del TP
 **Parte Front del Trabajo**
 PENDIENTES
 
-Caso de uso: Registrar Cliente:
-•	Se genera una solicitud al admin que debe aceptar al usuario (incluir en alta de usuarios o nueva sección de admin panel).
-•	Se debe generar id y contraseña automática. Ingresa con ID, no con email. CAMBIAR LOGIN.
 
 Caso de uso: Realizar pedido:
 •	Validar temas de moroso o al día. Para esto vamos a tener que hacer temas de facturación 
@@ -46,9 +43,12 @@ PREGUNTAS
 Caso de uso: Actualizar o agregar producto:
 o	Es necesario el cambio en la interfaz en la actualización?? Ralentiza los tiempos de carga, es poco accesible y poco usable. Tener que buscar al producto por ID es ridículo. Me gusta mas como esta hecho. PREGUNTAR A RIPANI
 
+Caso de uso: Registrar Cliente:
+o   Mongo no tiene ID numerico incremental. Podemos dejar que ingrese con el mail?
 --------------
 
 TERMINADOS
 Caso de uso: Conformar pedido: LISTO
 Caso de uso: Cancelar pedido: Listo 
 Caso de uso: Agrupar por categoría: LISTO
+Caso de uso: Registrar Cliente: LISTO (Se agrego userController para un listado de clientes pendientes de aceptacion y el atributo que corresponde en la BD y en el model. Tambien se agregaron funciones en routes-user.js para aceptar o rechazar al usuario y obtener el listado del que hable antes )

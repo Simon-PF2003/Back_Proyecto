@@ -5,7 +5,7 @@ async function migrarNuevoAtributo() {
     try {
         const users = await User.find();
         for (const use of users) {
-            use.status = 'Al día';
+            use.accepted = false;
             await use.save();
             console.log(users);
         }

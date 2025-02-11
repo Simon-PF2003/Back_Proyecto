@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema ({
     status: String,
     profileImage: String,
     role: String,
+    accepted: Boolean,
     verificationCode: String
 }, {
     timestamps: true

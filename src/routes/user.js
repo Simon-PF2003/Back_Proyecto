@@ -9,6 +9,7 @@ const validator = require('validator');
 const carpetaRelativa = '';
 const rutaAbsoluta = path.resolve(carpetaRelativa);
 const bcrypt = require('bcryptjs');
+const userController = require('../controllers/userController');
 
 const nodemailer = require('nodemailer');
 const transporter = nodemailer.createTransport({
@@ -78,6 +79,8 @@ router.post('/compareCode', async (req, res) => {
 module.exports = router;
 
 module.exports.verifyToken = verifyToken;
+
+router.get('/pendingUsers', userController.getPendingUsers);
 
 router.get('/clients/filters', async (req, res) => {
   try {
@@ -206,15 +209,15 @@ router.get('/', (req, res) => res.send('Hello World'));
 
 router.post('/signup', async (req, res) => {
   const role = 'Usuario Comun';
-  const { email, password, businessName, cuit, phoneNumber, address, profileImage } = req.body;
+  const { email, businessName, cuit, phoneNumber, address, profileImage} = req.body;
 
   if (!validator.isEmail(email)) {
     return res.status(400).send('Correo electrónico no válido');
   }
 
-  if (password.length < 8 || !/[!@#$%^&*()_+{}\[\]:;<>,.?~\\-]/.test(password)) {
+  /*if (password.length < 8 || !/[!@#$%^&*()_+{}\[\]:;<>,.?~\\-]/.test(password)) {
     return res.status(400).send('La contraseña debe tener al menos 8 caracteres de longitud y contener al menos un carácter especial');
-  }
+  }*/
 
   try {
     const existingUserEmail = await User.findOne({ email });
@@ -228,18 +231,20 @@ router.post('/signup', async (req, res) => {
       return res.status(400).send("CUIT Existente");
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    /*const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);*/
 
     const newUser = new User({
       email,
-      password: hashedPassword,
+       //hashedPassword,
       businessName,
       cuit,
       phoneNumber,
       address,
+      status: 'Al día',
       profileImage,
       role,
+      accepted: false,
     });
 
     newUser.profileImage = profileImage;
@@ -258,21 +263,33 @@ router.post('/signup', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).send("Faltan credenciales");
-    }
-
     const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(401).send("Credenciales inválidas");
+    
+    if (user.accepted === false) {
+      return res.status(402).send("Usuario pendiente de aceptación");
     }
-
-    const passwordMatch = await bcrypt.compare(password, user.password);
-
-    if (!passwordMatch) {
-      return res.status(401).send("Credenciales inválidas");
+    else if (user.accepted === null) {
+      return res.status(405).send("Usuario rechazado");
+    }
+    else { 
+        if (!email || !password) {
+        return res.status(400).send("Faltan credenciales");
+      }
+  
+      if (!user) {
+        return res.status(401).send("Credenciales inválidas");
+      }
+  
+      if (password) 
+        {const passwordMatch = await bcrypt.compare(password, user.password);
+          if (!passwordMatch) {
+            return res.status(401).send("Credenciales inválidas");
+          }
+        }
+  
+      /*if (!passwordMatch) {
+        return res.status(401).send("Credenciales inválidas");
+      }*/
     }
 
     const token = jwt.sign({ _id: user._id, role: user.role }, 'secretKey');
@@ -360,6 +377,93 @@ router.get('/getUserImage/:userId', async (req, res) => {
     res.status(500).json({ error: 'Error al obtener la imagen del usuario' });
   }
 });
+
+  router.patch('/acceptUser/:email', async (req, res) => {
+    const { email } = req.params;
+    const { password } = req.body;
+    console.log('aceptando');
+    console.log(password);
+    try {
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(404).json({ error: 'Usuario no encontrado' });
+      }
+
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+
+      user.password = hashedPassword;
+      user.accepted = true;
+
+      await user.save();
+
+      const opcionesCorreo = {
+        from: 'totalstoreshopping@gmail.com',
+        to: email,
+        subject: 'MPS SQUARE - Aceptación de usuario',
+        text: `Bienvenido a MPS SQUARE. Tu cuenta ha sido aceptada. Puedes iniciar sesión con tu correo electrónico y la contraseña: ${password}. Puede modificar su contraseña desde la sección "¿Olvidaste tu contraseña?" del login si asi lo desea.`,
+      };
+  
+      if (!validator.isEmail(email)) {
+        return res.status(401).send('Correo electrónico no válido');
+      }
+  
+      transporter.sendMail(opcionesCorreo, (error, info) => {
+        if (error) {
+          console.error('Error al enviar el correo electrónico:', error);
+          res.status(500).json({ mensaje: 'Error al enviar el correo electrónico' });
+        } else {
+          console.log('Correo electrónico enviado:', info.response);
+          res.status(200).json({ mensaje: 'Correo electrónico enviado correctamente' });
+        }
+      });
+
+      res.json({ message: 'Usuario aceptado correctamente y correo enviado' });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Error al aceptar el usuario' });
+    }
+  });
+
+  router.patch('/rejectUser/:email', async (req, res) => {
+    const { email } = req.params;
+
+    try {
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(404).json({ error: 'Usuario no encontrado' });
+      }
+
+      const opcionesCorreo = {
+        from: 'totalstoreshopping@gmail.com',
+        to: email,
+        subject: 'MPS SQUARE - Solicitud rechazada',
+        text: `Lamentablemente, tu solicitud ha sido rechazada. Si tienes alguna pregunta, por favor contáctanos.`,
+      };
+  
+      if (!validator.isEmail(email)) {
+        return res.status(401).send('Correo electrónico no válido');
+      }
+  
+      transporter.sendMail(opcionesCorreo, (error, info) => {
+        if (error) {
+          console.error('Error al enviar el correo electrónico:', error);
+          res.status(500).json({ mensaje: 'Error al enviar el correo electrónico' });
+        } else {
+          console.log('Correo electrónico enviado:', info.response);
+          res.status(200).json({ mensaje: 'Correo electrónico enviado correctamente' });
+        }
+      });
+    user.accepted = null;
+    await user.save();
+    res.status(200).json({ message: 'Usuario rechazado correctamente y correo enviado' });
+
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Error al rechazar el usuario' });
+    }
+  });
+    
 
   router.delete('/deleteUser/:userId', async (req, res) => {
     const userId = req.params.userId;

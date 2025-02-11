@@ -12,6 +12,7 @@ const createAdminUser = async () => {
         email: 'admin@example.com', 
         password: hashedPassword, 
         role: 'Administrador',
+        accepted: 'true',
       });
 
       await adminUser.save();
@@ -36,6 +37,7 @@ const createTestUser = async () => {
         email: 'e2e@gmail.com', 
         password: hashedPassword, 
         role: 'Usuario Comun',
+        accepted: 'true',
       });
 
       await testUser.save();
