@@ -51,11 +51,16 @@ router.post('/createNewProduct', upload.single('image'), async (req, res) => {
   const imageFileName = req.file.filename; // Nombre del archivo en el servidor
   const image = 'uploadsProductsImages/' + imageFileName; // Ruta relativa de la imagen
 
-  const newProduct = new Product({ desc, stock, price, cat, stockMin, featured, supplier,  image });
+  const newProduct = new Product({ desc, stock, price, cat, stockMin, featured, supplier, image });
   console.log(newProduct);
-  const token = jwt.sign({ _id: newProduct._id }, 'secretKey');
-  await newProduct.save();
-  res.status(200).json({ token });
+  const product = await Product.findOne({ desc: { $regex: new RegExp(`^${desc}$`, 'i') } }); //No case sensitive
+  if (product) {
+    return res.status(401).json({ error: 'El producto ya existe' });
+  } else {
+    const token = jwt.sign({ _id: newProduct._id }, 'secretKey');
+    await newProduct.save();
+    res.status(200).json({ token });
+  }
 });
 
 router.get('/product/:productId', async(req, res) => {
