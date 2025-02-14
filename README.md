@@ -3,7 +3,7 @@ Parte back del TP
 
 # TpDsw
 
-**Parte Back del Trabajo**
+**Parte Front del Trabajo**
 PENDIENTES
 
 Caso de uso: Retirar pedido y emitir factura:
@@ -31,3 +31,5 @@ Caso de uso: Realizar Pedido: LISTO
 Caso de uso: agregar o actualizar cliente: LISTO
 Caso de uso: Actualizar o agregar producto: LISTO --> Se valido al crear un nuevo producto que no este cargada su descripcion para no tener productos repetidos (no case sensitive). Se creo una sección de Modificar Productos que muestra un listado de los productos existentes y pueden filtrarse para editarlos.
 Caso de uso: Actualizar o agregar proveedor: LISTO --> Se agregó una sección Modificar Proveedores que muestra un listado de proveedores, pudiendo filtrarlos por razon social o cuit, y editarlos.
+
+Caso de uso de reporte: Recaudacion: LISTO --> En la sección de Recaudación, se presenta un filtro de fechas que muestra las facturas en dicho período y el total recaudado
