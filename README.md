@@ -18,12 +18,6 @@ Caso de uso: ingresar stock:
 Caso de uso: Recaudacion periodo de fechas:
 •	Falta todo. Primero hay que hacer las faturas.
 
-Caso de uso de reporte: Recaudacion
----------------
-
-Mejoras a hacer
-Busquedas de productos o por cuit/razon social --> Que si la busqueda esta vacia, devuelva todo.
-
 --------------
 
 TERMINADOS
