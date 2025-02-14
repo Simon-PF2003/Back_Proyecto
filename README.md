@@ -3,19 +3,11 @@ Parte back del TP
 
 # TpDsw
 
-**Parte Front del Trabajo**
+**Parte Back del Trabajo**
 PENDIENTES
 
 Caso de uso: Retirar pedido y emitir factura:
 •	Emision automática de la factura. Ver como rellenar campos de una factura según los datos del pedido. Convertir precio según datos como IVA.
-
-
-Caso de uso: Actualizar o agregar producto:
-o	Es necesario el cambio en la interfaz en la actualización?? Ralentiza los tiempos de carga, es poco accesible y poco usable. Tener que buscar al producto por ID es ridículo. Me gusta mas como esta hecho. PREGUNTAR A RIPANI.
-•	Validar existencia del producto según el nombre (si es que no esta hecho).
-
-Caso de uso: Actualizar o agregar proveedor:
-•	Si no me equivoco, falta la actualización, pero no me acuerdo.
 
 Caso de uso: solicitar stock:
 •	Agregar OC.
@@ -29,9 +21,8 @@ Caso de uso: Recaudacion periodo de fechas:
 Caso de uso de reporte: Recaudacion
 ---------------
 
-PREGUNTAS
-Caso de uso: Actualizar o agregar producto:
-o	Es necesario el cambio en la interfaz en la actualización?? Ralentiza los tiempos de carga, es poco accesible y poco usable. Tener que buscar al producto por ID es ridículo. Me gusta mas como esta hecho. PREGUNTAR A RIPANI
+Mejoras a hacer
+Busquedas de productos o por cuit/razon social --> Que si la busqueda esta vacia, devuelva todo.
 
 --------------
 
@@ -40,7 +31,9 @@ Caso de uso: Conformar pedido: LISTO
 Caso de uso: Cancelar pedido: Listo 
 Caso de uso: Agrupar por categoría: LISTO
 Caso de uso: Registrar Cliente: LISTO
-Caso de uso: Ordenar Clientes: LISTO --> Se cambio la fecha de ultima venta mostrada desde pedidos hasta facturas.
-Caso de uso: Realizar Pedido: LISTO --> Al realizar tema de facturación, si seleccionamos que no realizó el pago el cliente pasa a ser moroso y no se le permite la compra. Si seleccionamos que lo realizó, sigue al día.
+Caso de uso: Ordenar Clientes: LISTO
+Caso de uso: Realizar Pedido: LISTO
 
-Caso de uso: agregar o actualizar cliente: LISTO --> Se agregó una sección MODIFICAR USUARIOS en Admin Panel. Muestra un listado de usuarios que pueden filtrarse y modificarse. Existe un boton de agregar clientes para dar de alta a un cliente en la BD con todos los campos necesarios llenos. 
+Caso de uso: agregar o actualizar cliente: LISTO
+Caso de uso: Actualizar o agregar producto: LISTO --> Se valido al crear un nuevo producto que no este cargada su descripcion para no tener productos repetidos (no case sensitive). Se creo una sección de Modificar Productos que muestra un listado de los productos existentes y pueden filtrarse para editarlos.
+Caso de uso: Actualizar o agregar proveedor: LISTO --> Se agregó una sección Modificar Proveedores que muestra un listado de proveedores, pudiendo filtrarlos por razon social o cuit, y editarlos.

@@ -64,19 +64,17 @@ router.post('/createNewSupplier', async (req, res) => {
   
 router.patch('/updateDetails/details/:supId', async (req, res) => {
     const supId = req.params.supId;
-    const { address, phoneNumber } = req.body;
-    const updateDetails = {address, phoneNumber};
+    const { cuit, businessName, address, phoneNumber } = req.body;
+    const updateDetails = { cuit, businessName, address, phoneNumber };
   
     try {
-      const result = await Supplier.findByIdAndUpdate( supId, updateDetails );
+      const result = await Supplier.findByIdAndUpdate(supId, updateDetails, { new: true });
   
       if (!result) {
         return res.status(404).json({ error: 'Supplier no encontrado' });
       }
-
-      const sup = await Supplier.findById( supId )
   
-      res.json({ data: sup });
+      res.json({ data: result });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: 'Error al actualizar el supplier' });
