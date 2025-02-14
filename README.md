@@ -6,17 +6,9 @@ Parte back del TP
 **Parte Front del Trabajo**
 PENDIENTES
 
-
-Caso de uso: Realizar pedido:
-•	Validar temas de moroso o al día. Para esto vamos a tener que hacer temas de facturación 
-
 Caso de uso: Retirar pedido y emitir factura:
-•	Deberíamos hacer búsqueda por mas de una cosa, inchequeable el nro de pedido. 
 •	Emision automática de la factura. Ver como rellenar campos de una factura según los datos del pedido. Convertir precio según datos como IVA.
 
-Caso de uso: agregar o actualizar cliente:
-•	Incluir lo del registro. Profundizar edición. 
-o	Raro lo de agregar un cliente porque deberías agregarlo manualmente desde esta sección y después te llega la notificación para que lo aceptes y le generes id y contraseña
 
 Caso de uso: Actualizar o agregar producto:
 o	Es necesario el cambio en la interfaz en la actualización?? Ralentiza los tiempos de carga, es poco accesible y poco usable. Tener que buscar al producto por ID es ridículo. Me gusta mas como esta hecho. PREGUNTAR A RIPANI.
@@ -34,21 +26,21 @@ Caso de uso: ingresar stock:
 Caso de uso: Recaudacion periodo de fechas:
 •	Falta todo. Primero hay que hacer las faturas.
 
-Caso de uso: Ordena clientes
-•	No se como esta el diagrama. Si hay entidad de facturas, tenemos que crearla y acambiar la fecha de ultima venta a la fecha de factura en vez de pedido. Si no, ya esta hecho.
-
+Caso de uso de reporte: Recaudacion
 ---------------
 
 PREGUNTAS
 Caso de uso: Actualizar o agregar producto:
 o	Es necesario el cambio en la interfaz en la actualización?? Ralentiza los tiempos de carga, es poco accesible y poco usable. Tener que buscar al producto por ID es ridículo. Me gusta mas como esta hecho. PREGUNTAR A RIPANI
 
-Caso de uso: Registrar Cliente:
-o   Mongo no tiene ID numerico incremental. Podemos dejar que ingrese con el mail?
 --------------
 
 TERMINADOS
 Caso de uso: Conformar pedido: LISTO
 Caso de uso: Cancelar pedido: Listo 
 Caso de uso: Agrupar por categoría: LISTO
-Caso de uso: Registrar Cliente: LISTO (Se agrego userController para un listado de clientes pendientes de aceptacion y el atributo que corresponde en la BD y en el model. Tambien se agregaron funciones en routes-user.js para aceptar o rechazar al usuario y obtener el listado del que hable antes. Se modificaron funciones de registro y login para que el hasheo de contraseña y su asignación se realicen al aceptar al usuario y para que se valide que fue aceptado antes de ingresar )
+Caso de uso: Registrar Cliente: LISTO
+Caso de uso: Ordenar Clientes: LISTO --> Se cambio la fecha de ultima venta mostrada desde pedidos hasta facturas.
+Caso de uso: Realizar Pedido: LISTO --> Al realizar tema de facturación, si seleccionamos que no realizó el pago el cliente pasa a ser moroso y no se le permite la compra. Si seleccionamos que lo realizó, sigue al día.
+
+Caso de uso: agregar o actualizar cliente: LISTO --> Se agregó una sección MODIFICAR USUARIOS en Admin Panel. Muestra un listado de usuarios que pueden filtrarse y modificarse. Existe un boton de agregar clientes para dar de alta a un cliente en la BD con todos los campos necesarios llenos. 

@@ -55,6 +55,50 @@ router.get('/orders/:userId', async(req, res) => {
     }
   });*/
 
+  router.get('/finishedOrders', async (req, res) => {
+    try {
+      let { orderId, userBusiness, minTotal, maxTotal, minDate, maxDate } = req.query;
+      let query = { status: 'Terminado' };
+
+      if (orderId) {
+        query._id = orderId;
+      }
+      
+      if (userBusiness) {
+        const user = await User.findOne({
+           businessName: { $regex: userBusiness, $options: 'i' }
+        });
+
+        if(user) {
+          query.userId = user._id;
+        } else {
+          return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+      }
+
+      if (minTotal) {
+        query.total = { $gte: parseFloat(minTotal) };
+      }
+      if (maxTotal) {
+        query.total = { $lte: parseFloat(maxTotal) };
+      }
+
+      if (minDate) {
+        query.createdAt = { $gte: minDate };
+      }
+      if (maxDate) {
+        query.createdAt = { $lte: maxDate };
+      }
+
+      const orders = await Order.find(query).populate('userId', 'businessName');
+      res.json(orders);
+    } catch (error) {
+      console.error('Error al obtener pedidos terminados:', error);
+      res.status(500).json({ message: 'Error al obtener pedidos terminados' });
+    }
+  });
+  
+
 router.patch('/cancelOrder/:orderId', async (req, res) => {
   const { pedId } = req.params;
 

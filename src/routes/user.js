@@ -4,14 +4,28 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 const Order = require('../models/order'); 
+const Bill = require('../models/bill');
 const xss = require('xss-clean');
 const validator = require('validator');
 const carpetaRelativa = '';
 const rutaAbsoluta = path.resolve(carpetaRelativa);
 const bcrypt = require('bcryptjs');
 const userController = require('../controllers/userController');
+const multer = require('multer');
+
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, 'uploadsProfileImages/');
+  },
+  filename: function(req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage });
 
 const nodemailer = require('nodemailer');
+const bill = require('../models/bill');
 const transporter = nodemailer.createTransport({
   service: 'Gmail',
   auth: {
@@ -80,7 +94,17 @@ module.exports = router;
 
 module.exports.verifyToken = verifyToken;
 
+router.post('/addUser', upload.single('image'), (req, res, next) => {
+  console.log('Raw body:', req.body); // Verificar si llegan los datos
+  console.log('Raw file:', req.file);
+  next();
+}, userController.addUser);
+
 router.get('/pendingUsers', userController.getPendingUsers);
+
+router.get('/allUsers', userController.getAllUsers);
+
+router.patch('/updateUser/:id', upload.single('image'), userController.editUser);
 
 router.get('/clients/filters', async (req, res) => {
   try {
@@ -88,7 +112,7 @@ router.get('/clients/filters', async (req, res) => {
     let clients;
 
     // Obtener fechas de última venta para todos los clientes
-    const orders = await Order.aggregate([
+    /*const orders = await Order.aggregate([
       {
         $group: {
           _id: '$userId',
@@ -99,6 +123,20 @@ router.get('/clients/filters', async (req, res) => {
 
     const lastOrderMap = orders.reduce((map, order) => {
       map[order._id.toString()] = order.lastOrderDate;
+      return map;
+    }, {});*/
+
+    const bills = await Bill.aggregate([
+      {
+        $group: {
+          _id: '$userId',
+          lastOrderDate: { $max: '$createdAt' }
+        }
+      }
+    ]);
+
+    const lastOrderMap = bills.reduce((map, bill) => {
+      map[bill._id.toString()] = bill.lastOrderDate;
       return map;
     }, {});
 
