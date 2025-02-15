@@ -42,6 +42,12 @@ router.get('/featuredProducts', productController.getFeaturedProducts);
 
 router.get('/noProducts', productController.getNoStockProducts);
 
+router.get('/pendingStock', productController.getPendingStock);
+
+router.patch('/requestStock', productController.requestStock);
+
+router.patch('/updateStock', productController.updateStock);
+
 router.post('/createNewProduct', upload.single('image'), async (req, res) => {
   const { desc, stock, price, cat, stockMin, featured, supplier } = req.body;
   if (!req.file) {
@@ -77,6 +83,7 @@ router.get('/product/:productId', async(req, res) => {
     featured: product.featured,
     stockMin: product.stockMin,
     supplier: product.supplier,
+    pending: 0,
     image: `http://localhost:3000/${product.image}`
   };
 

@@ -9,6 +9,7 @@ const productSchema = new Schema ({
     stockMin: Number,
     featured: Boolean,
     supplier: String,
+    pending: Number
 }, {
     timestamps: true
 });
