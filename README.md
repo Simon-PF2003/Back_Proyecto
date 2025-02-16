@@ -4,16 +4,10 @@ Parte back del TP
 # TpDsw
 
 **Parte Back del Trabajo**
-PENDIENTES
-
-Caso de uso: Retirar pedido y emitir factura:
-•	Emision automática de la factura. Ver como rellenar campos de una factura según los datos del pedido. Convertir precio según datos como IVA.
-
---------------
 
 Mejoras: 
-Caso de uso: Retirar pedido y emitir factura --> Cuando se emite la factura, debe haber un reload que la saque de la interfaz.
 Caso de uso de reporte de recaudación --> Si no es dificil, ver como guardar pdf de la factura en BD y permitir al usuario ver la factura.
+PAGINACION ¿?
 
 --------------
 
@@ -24,6 +18,7 @@ Caso de uso: Agrupar por categoría: LISTO
 Caso de uso: Registrar Cliente: LISTO
 Caso de uso: Ordenar Clientes: LISTO
 Caso de uso: Realizar Pedido: LISTO
+Caso de uso: Retirar pedido y emitir factura: LISTO --> Al emitir la factura, se descarga la factura emitida como pdf con la fecha actual y el id.
 
 Caso de uso: agregar o actualizar cliente: LISTO
 Caso de uso: Actualizar o agregar producto: LISTO --> Se valido al crear un nuevo producto que no este cargada su descripcion para no tener productos repetidos (no case sensitive). Se creo una sección de Modificar Productos que muestra un listado de los productos existentes y pueden filtrarse para editarlos.
