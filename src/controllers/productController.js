@@ -1,5 +1,16 @@
 
 const Product = require('../models/product'); 
+const StockNotification = require('../models/stockNotification');
+const User = require('../models/user');
+
+const nodemailer = require('nodemailer');
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'totalstoreshopping@gmail.com',
+    pass: 'metz daac vlyi iqqe'
+  }
+});
 
 // Controlador para obtener la lista de productos
 exports.getProducts = async (req, res) => {
@@ -99,6 +110,29 @@ exports.updateStock = async (req, res) => {
     }));
 
     await Product.bulkWrite(bulkOperations);
+
+    for (const product of productsToUpdate) {
+      const productDetails = await Product.findById(product._id);
+      const stockNotification = await StockNotification.find({ productId: product._id, notified: false });
+      for (const notification of stockNotification) {
+        const user = await User.findById(notification.userId);
+        const mailOptions = {
+          from: 'totalstoreshopping@gmail.com',
+          to: user.email,
+          subject: 'MPS SQUARE: Notificación de Stock',
+          text: `El producto ${productDetails.desc} ya tiene stock`
+        };
+        transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.error('Error al enviar correo electrónico', error);
+          } else {
+            console.log('Email enviado: ', info.response);
+          }
+        });
+        notification.notified = true;
+        await notification.save();
+      }
+    }
     res.status(200).json({ message: 'Se ha actualizado el stock de los productos' });
 
   } catch (error) {
@@ -106,4 +140,30 @@ exports.updateStock = async (req, res) => {
     res.status(500).json({ message: 'Error al actualizar el stock de los productos' });
   }
 };
+
+exports.createStockNotification = async (req, res) => {
+    try {
+        const { userId, productId } = req.body;
+        console.log('Creando notificación de stock');
+        console.log('userId:', userId);
+        console.log('productId:', productId);
+        const product = await Product.findById(productId);
+        if (!product) {
+            return res.status(404).json({ message: 'Producto no encontrado' });
+        }
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+        const stockNotification = new StockNotification({ userId, productId });
+        await stockNotification.save();
+        res.status(200).json(stockNotification);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error al crear notificación de stock' });
+    }
+}
+
+
 

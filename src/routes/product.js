@@ -2,9 +2,19 @@ const { Router } = require('express');
 const router = Router();
 const jwt = require('jsonwebtoken');
 const Product = require('../models/product');
+const StockNotification = require('../models/stockNotification');
+const User = require('../models/user');
 const productController = require('../controllers/productController');
 const multer = require('multer');
 const path = require('path');
+const nodemailer = require('nodemailer');
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'totalstoreshopping@gmail.com',
+    pass: 'metz daac vlyi iqqe'
+  }
+});
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -35,6 +45,7 @@ router.get('/searchProducts/:searchTerm', async (req, res) => {
   }
 });
 
+router.post('/createStockNotification', productController.createStockNotification);
 
 router.get('/product', productController.getProducts);
 
@@ -142,14 +153,37 @@ router.get('/product/:productId', async(req, res) => {
     
     console.log("estas son las acts",updateOps);
     try {
-      const result = await Product.findByIdAndUpdate( productId, updateOps, { new: true });
+      const product = await Product.findById(productId);
+
+      if (stock>product.stock) {
+        const stockNotification = await StockNotification.find({ productId: productId, notified: false });
+        for (const notification of stockNotification) {
+          const user = await User.findById(notification.userId);
+          const mailOptions = {
+            from: 'totalstoreshopping@gmail.com',
+            to: user.email,
+            subject: 'MPS SQUARE: Notificación de Stock',
+            text: `El producto ${desc} ya está disponible en stock.`
+          };
+
+          transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+              console.error('Error al enviar correo electrónico', error);
+            } else {
+              console.log('Email enviado: ', info.response);
+            }
+          });
+          notification.notified = true;
+          await notification.save();
+        }
+      }
+
+      const result = await Product.findByIdAndUpdate(productId, updateOps, { new: true });
   
       if (!result) {
         return res.status(404).json({ error: 'Producto no encontrado' });
       }
-
-      const product = await Product.findById( productId )
-  
+ 
       res.json({ data: product });
     } catch (error) {
       console.error(error);

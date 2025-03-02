@@ -373,7 +373,7 @@ router.get('/user', verifyToken, async (req, res) => {
       profileImage: user.profileImage,
       status: user.status,
     };
-
+    console.log(userData);
     res.status(200).json(userData);
   } catch (error) {
     console.error(error);
