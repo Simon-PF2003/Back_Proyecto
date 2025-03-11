@@ -5,6 +5,7 @@ const supplierSchema = new Schema ({
     businessName: String,
     address: String,
     phoneNumber: String,
+    category: String,
 }, {
     timestamps: true
 });

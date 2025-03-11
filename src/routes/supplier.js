@@ -10,8 +10,14 @@ router.delete('/deleteSupplier/:supplierId', deleteSupplierController);
 
 //ANDA
 router.post('/createNewSupplier', async (req, res) => {
-  const { cuit, businessName, address,phoneNumber } = req.body;
-  const newSupplier = new Supplier({ cuit, businessName, address,phoneNumber });
+  const { cuit, businessName, address, phoneNumber, category } = req.body;
+  const newSupplier = new Supplier({ cuit, businessName, address, phoneNumber, category });
+  /*const supplierExists = await Supplier.findOne({ cuit: cuit });
+  
+  if (supplierExists) {
+    return res.status(400).json({ message: 'El proveedor agregado ya existe' });
+  }*/
+
   const token = jwt.sign({ _id: newSupplier._id }, 'secretKey');
   await newSupplier.save();
   res.status(200).json({ token });
@@ -64,8 +70,8 @@ router.post('/createNewSupplier', async (req, res) => {
   
 router.patch('/updateDetails/details/:supId', async (req, res) => {
     const supId = req.params.supId;
-    const { cuit, businessName, address, phoneNumber } = req.body;
-    const updateDetails = { cuit, businessName, address, phoneNumber };
+    const { cuit, businessName, address, phoneNumber, category } = req.body;
+    const updateDetails = { cuit, businessName, address, phoneNumber, category };
   
     try {
       const result = await Supplier.findByIdAndUpdate(supId, updateDetails, { new: true });

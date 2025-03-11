@@ -8,7 +8,11 @@ const productSchema = new Schema ({
     cat: String,
     stockMin: Number,
     featured: Boolean,
-    supplier: String,
+    supplier: { 
+        type: Schema.Types.ObjectId, 
+        ref: 'Supplier',                
+        required: true              
+      },
     pending: Number
 }, {
     timestamps: true

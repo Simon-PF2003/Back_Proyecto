@@ -307,7 +307,7 @@ router.post('/login', async (req, res) => {
       return res.status(402).send("Usuario pendiente de aceptación");
     }
     else if (user.accepted === null) {
-      return res.status(405).send("Usuario rechazado");
+      return res.status(405).send("No cumple con las condiciones para ser cliente");
     }
     else { 
         if (!email || !password) {

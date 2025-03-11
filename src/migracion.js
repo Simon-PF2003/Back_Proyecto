@@ -1,13 +1,14 @@
 const mongoose = require('mongoose');
 const User = require('./models/user'); 
 const Product = require('./models/product');
+const Supplier = require('./models/supplier');
 
 async function migrarNuevoAtributo() {
     try {
-        const products = await Product.find();
-        for (const product of products) {
-            product.pending = 0;
-            await product.save();
+        const suppliers = await Supplier.find();
+        for (const supplier of suppliers) {
+            supplier.category = 'Componentes';
+            await supplier.save();
         }
 
     } catch (error) {
