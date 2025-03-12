@@ -176,7 +176,7 @@ async function revertirStockProducto(productId, quantity) {
 
 router.get('/pedidos', async (req, res) => {
     try {
-        const pedidos = await Order.find({ status: { $in: ['Pendiente', 'En curso'] } });
+        const pedidos = await Order.find({ status: { $in: ['Pendiente', 'En curso', 'Facturado'] } });
         res.json(pedidos);
     } catch (err) {
         res.status(500).json({ message: err.message });
