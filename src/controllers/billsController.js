@@ -134,7 +134,10 @@ exports.getBills = async (req, res) => {
         if (!bills || bills.length === 0) {
             return res.status(403).json({ message: 'No se encontraron facturas' });
         }
-        console.log('Facturas encontradas:', bills.length);
+        console.log('Facturas encontradas:', bills.map(bill => ({
+            id: bill._id,
+            createdAt: bill.createdAt
+        })));
 
         const totalRecaudado = bills.reduce((acc, bill) => acc + (bill.total || 0), 0);
 
