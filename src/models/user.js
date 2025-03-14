@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
-const  { Schema } = require('mongoose');
-
+const {Schema} = require('mongoose');
 const userSchema = new mongoose.Schema ({
     email: String,
     password: String,
@@ -15,9 +14,9 @@ const userSchema = new mongoose.Schema ({
     verificationCode: String,
     discountId: { 
         type: Schema.Types.ObjectId, 
-        ref: 'Discount',                
-        required: false              
-    },
+        ref: 'Discount',
+        required: false
+      },
 }, {
     timestamps: true
 });
@@ -25,5 +24,3 @@ const userSchema = new mongoose.Schema ({
 const User = mongoose.model('User', userSchema);
 
 module.exports = mongoose.model('User', userSchema);
-
-
