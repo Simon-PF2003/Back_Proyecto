@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const  { Schema } = require('mongoose');
 
 const userSchema = new mongoose.Schema ({
     email: String,
@@ -11,7 +12,12 @@ const userSchema = new mongoose.Schema ({
     profileImage: String,
     role: String,
     accepted: Boolean,
-    verificationCode: String
+    verificationCode: String,
+    discountId: { 
+        type: Schema.Types.ObjectId, 
+        ref: 'Discount',                
+        required: false              
+    },
 }, {
     timestamps: true
 });

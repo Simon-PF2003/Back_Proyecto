@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 const Order = require('../models/order'); 
 const Bill = require('../models/bill');
+const Discount = require('../models/discount');
 const xss = require('xss-clean');
 const validator = require('validator');
 const carpetaRelativa = '';
@@ -329,13 +330,83 @@ router.post('/login', async (req, res) => {
         return res.status(401).send("Credenciales inválidas");
       }*/
     }
-
+    updateUserDiscount(user);
     const token = jwt.sign({ _id: user._id, role: user.role }, 'secretKey');
     res.status(200).json({ token });
     console.log(user.role);
   } catch (error) {
     console.error("Error en la autenticación:", error);
     res.status(500).send("Error en la autenticación");
+  }
+});
+
+async function updateUserDiscount(user) {
+  try {
+    const now = new Date();
+    const userCreatedAt = new Date(user.createdAt);
+    const userAgeInYears = (now - userCreatedAt) / (1000 * 60 * 60 * 24 * 365); // Convertir ms a años
+
+    // Verificar si los descuentos ya existen
+    const discount0 = await Discount.findOne({ discountPercentage: 0 });
+    const discount5 = await Discount.findOne({ discountPercentage: 0.05 });
+    const discount10 = await Discount.findOne({ discountPercentage: 0.1 });
+
+    // Crear los descuentos si no existen
+    let discount0Id = discount0 ? discount0._id : null;
+    let discount5Id = discount5 ? discount5._id : null;
+    let discount10Id = discount10 ? discount10._id : null;
+
+    if (!discount0Id) {
+      const newDiscount0 = await Discount.create({ discountPercentage: 0, daysFrom: 0, daysUntil: 365 });
+      discount0Id = newDiscount0._id;
+    }
+
+    if (!discount5Id) {
+      const newDiscount5 = await Discount.create({ discountPercentage: 0.05, daysFrom: 365, daysUntil: 3650 });
+      discount5Id = newDiscount5._id;
+    }
+
+    if (!discount10Id) {
+      const newDiscount10 = await Discount.create({ discountPercentage: 0.1, daysFrom: 3650, daysUntil: null });
+      discount10Id = newDiscount10._id;
+    }
+
+    // Determinar qué descuento asignar
+    let assignedDiscount = null;
+    if (userAgeInYears >= 1 && userAgeInYears < 10) {
+      assignedDiscount = discount5Id;
+    } else if (userAgeInYears >= 10) {
+      assignedDiscount = discount10Id;
+    } else {
+      assignedDiscount = discount0Id;
+    }
+
+    // Actualizar el usuario solo si hay un cambio
+    if (user.discountId?.toString() !== assignedDiscount?.toString()) {
+      user.discountId = assignedDiscount;
+      console.log(`Descuento asignado al usuario ${user._id}: ${assignedDiscount}`);
+      await user.save();
+    }
+
+  } catch (error) {
+    console.error("Error actualizando descuento del usuario:", error);
+  }
+}
+
+router.get('/user-discount/:user', async (req, res) => {
+  try {
+    const userId = req.params.user;
+    console.log('id usuario', userId);
+    const user = await User.findById(userId).populate('discountId');
+    
+    if (!user || !user.discountId) {
+      return res.json({ discountPercentage: 0 });
+    }
+    
+    res.json({ discountPercentage: user.discountId.discountPercentage });
+  } catch (error) {
+    console.error("Error obteniendo el descuento del usuario:", error);
+    res.status(500).json({ error: "Error obteniendo el descuento" });
   }
 });
 
@@ -372,6 +443,7 @@ router.get('/user', verifyToken, async (req, res) => {
       address: user.address,
       profileImage: user.profileImage,
       status: user.status,
+      discount: user.discountId,
     };
     console.log(userData);
     res.status(200).json(userData);
