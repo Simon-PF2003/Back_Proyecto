@@ -5,7 +5,9 @@ const app = express();
 const cors = require('cors');
 const path = require('path');
 const bodyParser = require('body-parser');
+const xss = require('xss-clean');
 
+app.use(xss())
 app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json());

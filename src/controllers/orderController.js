@@ -1,7 +1,12 @@
 const Order = require('../models/order');
+const Product = require('../models/product');
+const User = require('../models/user');
 const jwt = require('jsonwebtoken');
+const validator = require('validator');
+const transporter = require('../utils/mail');
 
-async function generateOrderController(req, res) {
+//POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS
+async function generateOrder(req, res) {
     console.log('nueva order'); 
     const { items, total, userId } = req.body;
     const newOrder = new Order ({items, total, userId, status: 'Pendiente'});
@@ -10,6 +15,246 @@ async function generateOrderController(req, res) {
     const token = jwt.sign({ _id: newOrder._id }, 'secretKey')
   
     res.status(200).json({token});
+}
+
+//GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS
+  //Mis pedidos
+async function getUserOrders(req, res) {
+  const userId = req.params.userId;
+  console.log(`Recuperando pedidos para el usuario con ID: ${userId}`);
+    try {
+        const pedidosUsuario = await Order.find({ userId: userId });
+    
+        res.json({ 
+          userId: userId,
+          pedidos: pedidosUsuario
+        });
+      } catch (error) {
+        res.status(500).json({ message: 'Error al recuperar pedidos del usuario' });
+      }
+}
+
+  //Devolver terminados para emitir facturas
+async function getFinishedOrders(req,res) {
+  try {
+    let { orderId, userBusiness, minTotal, maxTotal, minDate, maxDate } = req.query;
+    let query = { status: 'Terminado' };
+
+    if (orderId) {
+      query._id = orderId;
+    }
+    
+    if (userBusiness) {
+      const user = await User.findOne({
+          businessName: { $regex: userBusiness, $options: 'i' }
+      });
+
+      if(user) {
+        query.userId = user._id;
+      } else {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+    }
+
+    if (minTotal) {
+      query.total = { $gte: parseFloat(minTotal) };
+    }
+    if (maxTotal) {
+      query.total = { $lte: parseFloat(maxTotal) };
+    }
+
+    if (minDate) {
+      query.createdAt = { $gte: minDate };
+    }
+    if (maxDate) {
+      query.createdAt = { $lte: maxDate };
+    }
+
+    const orders = await Order.find(query).populate('userId', 'businessName');
+    res.json(orders);
+  } catch (error) {
+    console.error('Error al obtener pedidos terminados:', error);
+    res.status(500).json({ message: 'Error al obtener pedidos terminados' });
   }
+}
+
+//Recuperar los pedidos de parte del admin
+async function getOrders(req, res) {
+  try {
+        const pedidos = await Order.find({ status: { $in: ['Pendiente', 'En curso', 'Facturado'] } });
+        res.json(pedidos);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+}
+
+async function getUserMail(req, res) {
+  try {
+    const orderId = req.params.id;
+    const order = await Order.findById(orderId);
+    const userId = order.userId;  
+    const user = await User.findById(userId);
+    const email = user.email;
+    const fechaPedido = new Date(order.createdAt);
+    const fechaFormateada = fechaPedido.toLocaleString('es-ES');
+    if (order.status === 'Terminado') {
+    const opcionesCorreo = {
+      from: process.env.ENTERPRISE_MAIL,
+      to: email,
+      subject: 'Estado del pedido',
+      text: `El pedido ${order._id} del día ${fechaFormateada} está listo para su retiro`,
+    };
+
+    if (!validator.isEmail(email)) {
+      return res.status(401).send('Correo electrónico no válido');
+    }
+
+    transporter.sendMail(opcionesCorreo, (error, info) => {
+      if (error) {
+        console.error('Error al enviar el correo electrónico:', error);
+        res.status(500).json({ mensaje: 'Error al enviar el correo electrónico' });
+      } else {
+        console.log('Correo electrónico enviado:', info.response);
+        res.status(200).json({ mensaje: 'Correo electrónico enviado correctamente' });
+      }
+    });}
+
+    if (order.status==='Cancelado') {
+      const opcionesCorreo = {
+      from:process.env.ENTERPRISE_MAIL,
+      to: email,
+      subject: 'Estado del pedido',
+      text: `El pedido ${order._id} del día ${fechaFormateada} fue cancelado. Para más información, comuníquese con la empresa.`,
+    };
+
+    if (!validator.isEmail(email)) {
+      return res.status(401).send('Correo electrónico no válido');
+    }
+
+    transporter.sendMail(opcionesCorreo, (error, info) => {
+      if (error) {
+        console.error('Error al enviar el correo electrónico:', error);
+        res.status(500).json({ mensaje: 'Error al enviar el correo electrónico' });
+      } else {
+        console.log('Correo electrónico enviado:', info.response);
+        res.status(200).json({ mensaje: 'Correo electrónico enviado correctamente' });
+      }
+    });
+    }
+  } catch (error) {
+    console.error('Error al procesar la solicitud:', error);
+    res.status(500).json({ mensaje: 'Error al procesar la solicitud.' });
+  }
+}
+
+async function filterOrdersByClient(req, res) {
+  const searchTerm = req.params.searchTerm; 
+  console.log('searchOrders');
+  try {
+    const clients = await User.find({ businessName: { $regex: searchTerm, $options: 'i' } });
+    if (!clients || clients.length === 0) {
+      return res.status(404).json({ error: 'No se encontró ningún cliente con esa razón social' });
+    }
+    let allOrders = [];
+    for (const client of clients) {
+      const orders = await Order.find({userId: client._id, status: 'Pendiente'});
+      console.log('Los pedidos del cliente son: ', orders);
+      allOrders = allOrders.concat(orders);
+    }
+    console.log('Pedidos: ', allOrders);
+    res.json(allOrders);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al buscar los pedidos' });
+  }
+}
+
+  //Cliente cancela su pedido
+async function cancelOrder(req, res) {
+  try {
+      const orderId = req.params.orderId; 
+      const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).send('Pedido no encontrado');
+    }
+
+    if (order.status !== 'Pendiente') {
+        return res.status(400).json({ message: 'No se puede cancelar un pedido que no está pendiente' });
+      }
+      order.status = 'Cancelado';
+      await order.save();
+    // Revertir el stock de los productos asociados al pedido
+    for (const item of order.items) {
+      // Actualizar el stock en la base de datos
+      await revertirStockProducto(item._id, item.quantity);
+    }
+    // Envía una respuesta de éxito
+    return res.status(200).json('El pedido fue cancelado con éxito');
+  } catch (error) {
+    console.error('No se pudo cancelar el pedido', error);
+    return res.status(500).json('No se pudo cancelar el pedido');
+  }
+}
+
+  //El admin cambia el estado del pedido.
+async function changeOrderStatus(req, res) {
+  try {
+    const newStatus = req.body.status;
+    const orderId = req.params.orderId;
+    const order = await Order.findById(orderId);
+    order.status =newStatus;
+    console.log(order.status);
+    console.log(order);
+    await order.save();
+    if (!order) {
+      return res.status(404).json({ message: 'Pedido no encontrado' });
+    }else {res.status(200).json({ message: 'Pedido actualizado exitosamente' });}
+    if (order.status === 'Cancelado'){
+      for (const item of order.items) {
+      // Actualizar el stock en la base de datos
+      console.log(item._id);
+      await revertirStockProducto(item._id, item.quantity);
+    }  
+      }
+    }
+   catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
+async function revertirStockProducto(productId, quantity) {
+  try {
+    // Obtener el producto por su ID
+    const product = await Product.findById(productId);
+
+    if (!product) {
+      console.error(`Producto con ID ${productId} no encontrado`);
+      return;
+    }
+
+    // Actualizar el stock del producto
+    product.stock += quantity;
+
+    // Guardar los cambios en el producto
+    await product.save();
+  } catch (error) {
+    console.error(`Error al revertir el stock del producto ${productId}:`, error);
+    throw error;
+  }
+}
+module.exports = { 
+  //POST
+  generateOrder,
   
-  module.exports = { generateOrderController };
+  //GETS
+  getUserOrders,
+  getFinishedOrders,
+  getOrders, 
+  getUserMail,
+  filterOrdersByClient,
+
+  //PATCH
+  cancelOrder,
+  changeOrderStatus
+};

@@ -6,7 +6,9 @@ const fs = require('fs');
 const path = require('path');
 const { PDFDocument } = require('pdf-lib');
 
-exports.generateNewBill = async (req, res) => {
+//POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS
+
+async function generateNewBill(req, res) {
     try {
         console.log('generating bill');
         const { billData, pagado } = req.body;
@@ -50,8 +52,10 @@ exports.generateNewBill = async (req, res) => {
     }
 }
 
-const generateAndSavePDF = async (billId) => {
+//Función Privada (no se exporta. Solo sirve para que acceda la función de arriba)
+async function generateAndSavePDF(billId) {
     try {
+        console.log('Generating PDF for bill ID:', billId);
         const bill = await Bill.findById(billId).populate('userId');
         if (!bill) {
             throw new Error('No se encontró la factura');
@@ -99,7 +103,8 @@ const generateAndSavePDF = async (billId) => {
     }
 }
 
-exports.getBills = async (req, res) => {
+// GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS
+async function getBills(req, res) {
     try {
         console.log('Entramos a getBills');
         const { dateStart, dateEnd } = req.query;
@@ -147,3 +152,8 @@ exports.getBills = async (req, res) => {
         return res.status(500).json({ message: 'Error interno del servidor', error: error.message });
     }
 };
+
+module.exports = {
+    generateNewBill,
+    getBills
+}
