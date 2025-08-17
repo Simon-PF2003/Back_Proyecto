@@ -5,10 +5,10 @@ const Supplier = require('./models/supplier');
 
 async function migrarNuevoAtributo() {
     try {
-        const suppliers = await Supplier.find();
-        for (const supplier of suppliers) {
-            supplier.category = 'Componentes';
-            await supplier.save();
+        const products = await Product.find();
+        for (const product of products) {
+            product.brand = 'Marca';
+            await product.save();
         }
 
     } catch (error) {

@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const User = require('./models/user');
 
@@ -9,7 +8,7 @@ const createAdminUser = async () => {
     const existingAdminUser = await User.findOne({ email: process.env.ADMIN_USER });
     if (!existingAdminUser) {
       const adminUser = new User({
-        email: ADMIN_USER, 
+        email: process.env.ADMIN_USER, 
         password: hashedPassword, 
         role: 'Administrador',
         accepted: 'true',
