@@ -8,7 +8,7 @@ const transporter = require('../utils/mail');
 
 //POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS 
 async function createProduct(req,res) {
-  const { desc, stock, price, cat, stockMin, featured, supplier } = req.body;
+  const { desc, brand, stock, price, cat, stockMin, featured, supplier } = req.body;
   if (!req.file) {
     return res.status(400).json({ error: 'No se ha adjuntado una imagen' });
   }
@@ -17,7 +17,7 @@ async function createProduct(req,res) {
   const image = 'uploadsProductsImages/' + imageFileName; // Ruta relativa de la imagen
   const sup = await Supplier.findOne({ businessName: supplier });
   console.log("supplier", sup);
-  const newProduct = new Product({ desc, stock, price, cat, stockMin, featured, supplier: sup._id, image });
+  const newProduct = new Product({ desc, brand, stock, price, cat, stockMin, featured, supplier: sup._id, image });
   console.log(newProduct);
   const product = await Product.findOne({ desc: { $regex: new RegExp(`^${desc}$`, 'i') } }); //No case sensitive
   if (product) {
@@ -130,6 +130,7 @@ async function getProductById(req,res) {
   const productDetails = {
     _id: product._id,
     desc: product.desc,
+    brand: product.brand,
     stock: product.stock,
     price: product.price,
     cat: product.cat,
@@ -162,10 +163,10 @@ async function getProductByCategory(req,res) {
   //Editar un producto
 async function editProduct(req,res) {
   const productId = req.params.productId;
-  const { desc, stock, price, cat, featured, stockMin, supplier } = req.body;
+  const { desc, brand, stock, price, cat, featured, stockMin, supplier } = req.body;
   const newSupplier = await Supplier.findOne({ businessName: supplier });
   console.log("supplier", newSupplier);
-  const updateOps = {desc, stock, price, cat, featured, stockMin, supplier: newSupplier._id};
+  const updateOps = {desc, brand, stock, price, cat, featured, stockMin, supplier: newSupplier._id};
   if (req.file) {
     const imageFileName = req.file.filename;
     updateOps.image = 'uploadsProductsImages/' + imageFileName;
