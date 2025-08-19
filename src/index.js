@@ -14,6 +14,7 @@ app.use(bodyParser.json());
 
 require('./initAdminUser.js');
 require('./database.js');
+require('./initCounters.js');
 //require('./migracion.js');
 
 app.use('/api', require('./routes/user.js'));

@@ -1,5 +1,6 @@
 const Supplier = require('../models/supplier');
 const Product = require('../models/product'); 
+const Counter = require('../models/counter');
 const StockNotification = require('../models/stockNotification');
 const User = require('../models/user');
 const jwt = require('jsonwebtoken');
@@ -18,13 +19,14 @@ async function createProduct(req,res) {
   const sup = await Supplier.findOne({ businessName: supplier });
   console.log("supplier", sup);
   const newProduct = new Product({ desc, brand, stock, price, cat, stockMin, featured, supplier: sup._id, image });
-  console.log(newProduct);
   const product = await Product.findOne({ desc: { $regex: new RegExp(`^${desc}$`, 'i') } }); //No case sensitive
   if (product) {
     return res.status(401).json({ error: 'El producto ya existe' });
   } else {
+    newProduct.code = await Counter.getNext('productos');
     const token = jwt.sign({ _id: newProduct._id }, 'secretKey');
     await newProduct.save();
+    console.log(newProduct);
     res.status(200).json({ token });
   }
 }

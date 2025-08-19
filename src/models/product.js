@@ -14,7 +14,14 @@ const productSchema = new Schema ({
         ref: 'Supplier',                
         required: true              
       },
-    pending: Number
+    pending: Number,
+    code: {
+        type: Number,
+        unique: true,
+        index: true,
+        sparse: true, // este sparse es para que se permita que existan productos sin este campo
+        immutable: true // para que no se pueda cambiar por cualquieeeer cosa
+      },
 }, {
     timestamps: true
 });
