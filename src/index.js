@@ -15,9 +15,11 @@ app.use(bodyParser.json());
 require('./initAdminUser.js');
 require('./database.js');
 require('./initCounters.js');
+require('./initCategories.js');
 //require('./migracion.js');
 
 app.use('/api', require('./routes/user.js'));
+app.use('/api', require('./routes/category.js'));
 app.use('/api', require('./routes/product.js'));
 app.use('/api', require('./routes/order.js'));
 app.use('/api', require('./routes/supplier.js'));

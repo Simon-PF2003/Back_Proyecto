@@ -4,8 +4,10 @@ const Counter = require('../models/counter');
 const StockNotification = require('../models/stockNotification');
 const User = require('../models/user');
 const jwt = require('jsonwebtoken');
-
 const transporter = require('../utils/mail');
+const Category = require('../models/category');
+const mongoose = require('mongoose');
+
 
 //POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS 
 async function createProduct(req,res) {
@@ -13,7 +15,9 @@ async function createProduct(req,res) {
   if (!req.file) {
     return res.status(400).json({ error: 'No se ha adjuntado una imagen' });
   }
-
+  if (!mongoose.Types.ObjectId.isValid(cat)) {
+    return res.status(400).json({ error: 'categoryId inválido' });
+  }
   const imageFileName = req.file.filename; // Nombre del archivo en el servidor
   const image = 'uploadsProductsImages/' + imageFileName; // Ruta relativa de la imagen
   const sup = await Supplier.findOne({ businessName: supplier });
@@ -59,7 +63,7 @@ async function createStockNotification(req, res) {
 // Controlador para obtener la lista de productos
 async function getProducts(req, res) {
   try {
-    const products = await Product.find();
+    const products = await Product.find().populate('cat','type');
     res.json(products);
   } catch (error) {
     console.error(error);
@@ -166,35 +170,44 @@ async function getProductByCategory(req,res) {
 async function editProduct(req,res) {
   const productId = req.params.productId;
   const { desc, brand, stock, price, cat, featured, stockMin, supplier } = req.body;
+
   const newSupplier = await Supplier.findOne({ businessName: supplier });
-  console.log("supplier", newSupplier);
-  const updateOps = {desc, brand, stock, price, cat, featured, stockMin, supplier: newSupplier._id};
-  if (req.file) {
-    const imageFileName = req.file.filename;
-    updateOps.image = 'uploadsProductsImages/' + imageFileName;
-    console.log("imagen", updateOps.image);
+  if (!newSupplier) return res.status(400).json({ error: 'Proveedor inexistente' });
+
+  const updateOps = { desc, brand, stock, price, featured, stockMin, supplier: newSupplier._id };
+
+  if (cat !== undefined) {
+    if (cat === null || cat === '') {
+    } else if (mongoose.Types.ObjectId.isValid(cat)) {
+      updateOps.cat = cat;                       
+    } else {
+      const catDoc = await Category.findOne({ type: cat }); // vino por nombre -> buscamos su _id
+      if (!catDoc) return res.status(400).json({ error: 'Categoría inválida' });
+      updateOps.cat = catDoc._id;
+    }
   }
-  
-  console.log("estas son las acts",updateOps);
+
+  if (req.file) {
+    updateOps.image = 'uploadsProductsImages/' + req.file.filename;
+  }
+
   try {
     const product = await Product.findById(productId);
-    if (stock>product.stock) {
-      const stockNotification = await StockNotification.find({ productId: productId, notified: false });
+    if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
+
+    if (typeof stock === 'number' && stock > product.stock) {
+      const stockNotification = await StockNotification.find({ productId, notified: false });
       for (const notification of stockNotification) {
         const user = await User.findById(notification.userId);
         const mailOptions = {
           from: process.env.ENTERPRISE_MAIL,
           to: user.email,
           subject: 'MPS SQUARE: Notificación de Stock',
-          text: `El producto ${desc} ya está disponible en stock.`
+          text: `El producto ${desc || product.desc} ya está disponible en stock.`
         };
-
         transporter.sendMail(mailOptions, (error, info) => {
-          if (error) {
-            console.error('Error al enviar correo electrónico', error);
-          } else {
-            console.log('Email enviado: ', info.response);
-          }
+          if (error) console.error('Error al enviar correo electrónico', error);
+          else console.log('Email enviado: ', info.response);
         });
         notification.notified = true;
         await notification.save();
@@ -202,17 +215,15 @@ async function editProduct(req,res) {
     }
 
     const result = await Product.findByIdAndUpdate(productId, updateOps, { new: true });
+    if (!result) return res.status(404).json({ error: 'Producto no encontrado' });
 
-    if (!result) {
-      return res.status(404).json({ error: 'Producto no encontrado' });
-    }
-
-    res.json({ data: product });
+    res.json({ data: result });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al actualizar el producto' });
   }
 }
+
 
   //Restar stock cuando ingresa pedido
 async function updateOrderStock(req, res) {

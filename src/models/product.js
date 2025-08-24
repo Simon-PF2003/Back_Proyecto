@@ -6,7 +6,7 @@ const productSchema = new Schema ({
     stock: Number,
     price: Number,
     image: String,
-    cat: String,
+    cat: { type: Schema.Types.ObjectId, ref: 'Category', index: true },
     stockMin: Number,
     featured: Boolean,
     supplier: { 
@@ -15,10 +15,7 @@ const productSchema = new Schema ({
         required: true              
       },
     pending: Number,
-    code: {
-        type: Number,
-        unique: true,
-        index: true,
+    code: {type: Number, unique: true, index: true,
         sparse: true, // este sparse es para que se permita que existan productos sin este campo
         immutable: true // para que no se pueda cambiar por cualquieeeer cosa
       },
