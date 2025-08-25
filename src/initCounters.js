@@ -19,7 +19,6 @@ async function sync() {
         { upsert: true }
       );
     }
-    console.log('[initCounters] Contador "productos" sincronizado con Product.code');
   } catch (err) {
     console.error('[initCounters] Error al sincronizar contador "productos":', err);
   }

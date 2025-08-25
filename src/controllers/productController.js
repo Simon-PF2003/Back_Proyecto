@@ -151,14 +151,29 @@ async function getProductById(req,res) {
 }
 
   //Buscar por la dropdown de categoria
-async function getProductByCategory(req,res) {
+async function getProductByCategory(req, res) {
   const category = req.params.category;
   console.log(category);
   try {
-    const productos = await Product.find({ cat: category });
+    if (category === 'all' || category === 'Todos') {
+      const productos = await Product.find().populate('cat', 'type');
+      return res.json(productos);
+    }
+
+    if (mongoose.Types.ObjectId.isValid(category)) {
+      console.log("es id");
+      const productos = await Product.find({ cat: category }).populate('cat', 'type');
+      console.log(productos);
+      return res.json(productos);
+    }
+    //Este es por si llega por type en vez del id
+    const catDoc = await Category.findOne({ type: category });
+    if (!catDoc) return res.status(404).json({ error: 'Categoría no encontrada' });
+
+    const productos = await Product.find({ cat: catDoc._id }).populate('cat', 'type');
     console.log(productos);
-    res.json(productos);
-    
+    return res.json(productos);
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al buscar productos por categoría' });
@@ -170,19 +185,27 @@ async function getProductByCategory(req,res) {
 async function editProduct(req,res) {
   const productId = req.params.productId;
   const { desc, brand, stock, price, cat, featured, stockMin, supplier } = req.body;
-
+  
   const newSupplier = await Supplier.findOne({ businessName: supplier });
   if (!newSupplier) return res.status(400).json({ error: 'Proveedor inexistente' });
 
-  const updateOps = { desc, brand, stock, price, featured, stockMin, supplier: newSupplier._id };
+  const updateOps = { desc, brand, stock, cat, price, featured, stockMin, supplier: newSupplier._id };
 
   if (cat !== undefined) {
     if (cat === null || cat === '') {
+      // No actualizar la categoría si está vacía
     } else if (mongoose.Types.ObjectId.isValid(cat)) {
-      updateOps.cat = cat;                       
+      console.log("entramos a actualizar por ID");
+      console.log(cat);
+      // Verificar que la categoría existe antes de asignarla
+      const categoryExists = await Category.findOne({ type: cat });
+      if (!categoryExists) return res.status(400).json({ error: 'Categoría inválida' });
+      updateOps.cat = categoryExists._id;
     } else {
+      console.log("Buscando categoría por nombre:", cat);
       const catDoc = await Category.findOne({ type: cat }); // vino por nombre -> buscamos su _id
       if (!catDoc) return res.status(400).json({ error: 'Categoría inválida' });
+      console.log("Categoría encontrada:", catDoc);
       updateOps.cat = catDoc._id;
     }
   }
@@ -213,7 +236,7 @@ async function editProduct(req,res) {
         await notification.save();
       }
     }
-
+    console.log(updateOps);
     const result = await Product.findByIdAndUpdate(productId, updateOps, { new: true });
     if (!result) return res.status(404).json({ error: 'Producto no encontrado' });
 
