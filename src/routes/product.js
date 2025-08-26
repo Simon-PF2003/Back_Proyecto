@@ -8,9 +8,10 @@ router.post('/createStockNotification', ProductController.createStockNotificatio
 
 router.post('/createNewProduct', upload.single('image'), ProductController.createProduct);
 
-//GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS 
-  //Filtro por navegación
-router.get('/searchProducts/:searchTerm', ProductController.filterProducts);
+//GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS
+
+// En tu archivo de rutas (probablemente routes/products.js o similar)
+router.get('/products/filter', ProductController.getProductsWithFilters);
 
   //Todo el listado
 router.get('/product', ProductController.getProducts);
@@ -27,8 +28,6 @@ router.get('/pendingStock', ProductController.getPendingStock);
   //Es busqueda por ID. Sirve para entrar a la single card del producto
 router.get('/product/:productId', ProductController.getProductById);
 
-  //Filtro por categoría
-router.get('/category/:category', ProductController.getProductByCategory); 
 
 //PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH 
 router.patch('/requestStock', ProductController.requestStock);

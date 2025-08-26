@@ -12,7 +12,12 @@ const transporter = require('../utils/mail');
   //Agrega al usuario de forma manual
 async function addUser(req, res) {
   const { email, password, businessName, cuit, phoneNumber, address, status, role } = req.body;
-  const profileImage = req.file.filename;
+  
+  let profileImage = null;
+  if (req.file) {
+    profileImage = req.file.filename;
+  }
+  
 
   /*console.log('agregando usuario');
   console.log('usuario:', req.body);

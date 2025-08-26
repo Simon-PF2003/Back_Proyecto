@@ -60,6 +60,64 @@ async function createStockNotification(req, res) {
 }
 
 //GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS GETS 
+// Función combinada para filtros múltiples
+async function getProductsWithFilters(req, res) {
+  try {
+    const { search, category, hasStock, minPrice, maxPrice } = req.query;
+    
+    // Construir el objeto de filtro de MongoDB
+    let filter = {};
+    
+    // Filtro de búsqueda por texto (similar a filterProducts)
+    if (search && search.trim() !== '') {
+      filter.desc = { $regex: search, $options: 'i' };
+    }
+    
+    // Filtro de categoría (similar a getProductByCategory)
+    if (category && category !== 'all') {
+      if (mongoose.Types.ObjectId.isValid(category)) {
+        filter.cat = category;
+      } else {
+        // Si no es un ObjectId válido, buscar por type
+        const catDoc = await Category.findOne({ type: category });
+        if (catDoc) {
+          filter.cat = catDoc._id;
+        } else {
+          return res.status(404).json({ error: 'Categoría no encontrada' });
+        }
+      }
+    }
+    
+    // Filtro de stock
+    if (hasStock === 'true') {
+      filter.stock = { $gt: 0 };
+    }
+    
+    // Filtros de precio
+    if (minPrice && !isNaN(parseFloat(minPrice))) {
+      filter.price = { ...filter.price, $gte: parseFloat(minPrice) };
+    }
+    
+    if (maxPrice && !isNaN(parseFloat(maxPrice))) {
+      filter.price = { ...filter.price, $lte: parseFloat(maxPrice) };
+    }
+    
+    console.log('Filtros aplicados:', filter);
+    
+    // Ejecutar la consulta con todos los filtros
+    const products = await Product.find(filter).populate('cat', 'type');
+    
+    if (!products || products.length === 0) {
+      return res.status(400).json({ error: 'No se encontraron productos que cumplan con los filtros' });
+    }
+    
+    res.json(products);
+  } catch (error) {
+    console.error('Error en getProductsWithFilters:', error);
+    res.status(500).json({ error: 'Error al buscar productos con filtros' });
+  }
+}
+
 // Controlador para obtener la lista de productos
 async function getProducts(req, res) {
   try {
@@ -108,25 +166,6 @@ async function getPendingStock(req, res) {
   }
 }
 
-  //Filtrado por busqueda en barra de navegacion
-async function filterProducts(req, res) {
-  const searchTerm = req.params.searchTerm; 
-  try {
-    const products = await Product.find({ desc: { $regex: searchTerm, $options: 'i' } }); //$options: 'i' es una opción de modificador en una expresión de expresión regular utilizada en la consulta de la base de datos MongoDB.
-//En el contexto de MongoDB, cuando usas expresiones regulares con $regex para realizar búsquedas, $options: 'i' es una de las opciones disponibles para controlar cómo se realiza la búsqueda. En particular:
-//'i' significa insensible a mayúsculas y minúsculas (case-insensitive). Al usar esta opción junto con $regex, la consulta ignorará la distinción entre mayúsculas y minúsculas. Por lo tanto, la búsqueda de "Ejemplo" sería igual a "ejemplo" o "EJEMPLO".
-
-    if (!products || products.length === 0) {
-      return res.status(400).json({ error: 'No se encontraron productos' });
-    }
-
-    res.json(products);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al buscar productos' });
-  }
-}
-
   //Para entrar a la single card del producto
 async function getProductById(req,res) {
   const productId = req.params.productId;
@@ -148,36 +187,6 @@ async function getProductById(req,res) {
   };
 
   res.json(productDetails);
-}
-
-  //Buscar por la dropdown de categoria
-async function getProductByCategory(req, res) {
-  const category = req.params.category;
-  console.log(category);
-  try {
-    if (category === 'all' || category === 'Todos') {
-      const productos = await Product.find().populate('cat', 'type');
-      return res.json(productos);
-    }
-
-    if (mongoose.Types.ObjectId.isValid(category)) {
-      console.log("es id");
-      const productos = await Product.find({ cat: category }).populate('cat', 'type');
-      console.log(productos);
-      return res.json(productos);
-    }
-    //Este es por si llega por type en vez del id
-    const catDoc = await Category.findOne({ type: category });
-    if (!catDoc) return res.status(404).json({ error: 'Categoría no encontrada' });
-
-    const productos = await Product.find({ cat: catDoc._id }).populate('cat', 'type');
-    console.log(productos);
-    return res.json(productos);
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error al buscar productos por categoría' });
-  }
 }
 
 //PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH 
@@ -383,9 +392,8 @@ module.exports = {
   getFeaturedProducts,
   getNoStockProducts,
   getPendingStock,
-  filterProducts, 
   getProductById,
-  getProductByCategory,
+  getProductsWithFilters,
 
 
   //PATCH
