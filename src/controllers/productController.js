@@ -66,22 +66,30 @@ async function getProductsWithFilters(req, res) {
   try {
     const { search, category, brand, hasStock, minPrice, maxPrice } = req.query;
     
-    // Construir el objeto de filtro de MongoDB
     let filter = {};
-    
-    // Filtro de búsqueda por texto (similar a filterProducts)
+
     if (search && search.trim() !== '') {
-      filter.desc = { $regex: search, $options: 'i' };
+      const searchRegex = { $regex: search, $options: 'i' };
+      filter.$or = [
+        { desc: searchRegex }
+      ];
+
+      if (!isNaN(search)) {
+        filter.$or.push({ code: parseInt(search) });
+      } else {
+        const numericPart = search.match(/\d+/);
+        if (numericPart) {
+          filter.$or.push({ code: parseInt(numericPart[0]) });
+        }
+      }
     }
     
-    // Filtro de categoría (similar a getProductByCategory)
     if (category && category !== 'all') {
       if (mongoose.Types.ObjectId.isValid(category)) {
         const categoryExists = await Category.findById(category);
         if (categoryExists) {
           filter.cat = categoryExists._id;
         } else {
-          // Si no se encuentra por ID, intentar buscar por nombre
           const catDoc = await Category.findOne({ type: category });
           if (catDoc) {
             filter.cat = catDoc._id;
@@ -90,7 +98,6 @@ async function getProductsWithFilters(req, res) {
           }
         }
       } else {
-        // Si no es un ObjectId válido, buscar por type
         const catDoc = await Category.findOne({ type: category });
         if (catDoc) {
           filter.cat = catDoc._id;
@@ -123,12 +130,10 @@ async function getProductsWithFilters(req, res) {
       }
     }
 
-    // Filtro de stock
     if (hasStock === 'true') {
       filter.stock = { $gt: 0 };
     }
     
-    // Filtros de precio
     if (minPrice && !isNaN(parseFloat(minPrice))) {
       filter.price = { ...filter.price, $gte: parseFloat(minPrice) };
     }
@@ -139,7 +144,6 @@ async function getProductsWithFilters(req, res) {
     
     console.log('Filtros aplicados:', filter);
     
-    // Ejecutar la consulta con todos los filtros
     const products = await Product.find(filter).populate('cat', 'type').populate('brand', 'brand');
     
     if (!products || products.length === 0) {
