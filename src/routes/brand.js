@@ -1,18 +1,18 @@
 const { Router } = require('express');
 const router = Router();
-const CategoryController = require('../controllers/categoryController');
+const BrandController = require('../controllers/brandController');
 
 // POST POST POST POST POST POST POST POST POST POST POST POST POST POST POST POST POST POST
-router.post('/categories', CategoryController.createCategory);
+router.post('/newBrand', BrandController.createBrand);
 
 // GET GET GET GET GET GET GET GET GET GET GET GET GET GET GET GET GET GET GET GET GET GET
-router.get('/categories', CategoryController.getAllCategories);
-router.get('/search-categories/:term', CategoryController.searchCategories);
+router.get('/brands', BrandController.getAllBrands);
+router.get('/search-brands/:term', BrandController.searchBrands);
 
 // PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH
-router.patch('/update-categories/:id', CategoryController.updateCategory);
+router.patch('/update-brands/:id', BrandController.updateBrand);
 
 // DELETE DELETE DELETE DELETE DELETE DELETE DELETE DELETE DELETE DELETE DELETE DELETE DELETE
-router.delete('/delete-categories/:id', CategoryController.deleteCategory);
+router.delete('/delete-brands/:id', BrandController.deleteBrand);
 
 module.exports = router;

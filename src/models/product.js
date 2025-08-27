@@ -7,6 +7,7 @@ const productSchema = new Schema ({
     price: Number,
     image: String,
     cat: { type: Schema.Types.ObjectId, ref: 'Category', index: true },
+    brand: { type: Schema.Types.ObjectId, ref: 'Brand', index: true, required: false },
     stockMin: Number,
     featured: Boolean,
     supplier: { 

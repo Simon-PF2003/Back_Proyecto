@@ -20,6 +20,7 @@ require('./initCategories.js');
 
 app.use('/api', require('./routes/user.js'));
 app.use('/api', require('./routes/category.js'));
+app.use('/api', require('./routes/brand.js')); 
 app.use('/api', require('./routes/product.js'));
 app.use('/api', require('./routes/order.js'));
 app.use('/api', require('./routes/supplier.js'));

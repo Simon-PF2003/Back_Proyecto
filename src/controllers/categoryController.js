@@ -25,17 +25,6 @@ async function getAllCategories(_req, res) {
   }
 }
 
-// GET /categories/:id
-async function getCategoryById(req, res) {
-  try {
-    const cat = await Category.findById(req.params.id).exec();
-    if (!cat) return res.status(404).json({ message: 'Categoría no encontrada' });
-    return res.json(cat);
-  } catch {
-    return res.status(500).json({ message: 'Error al obtener la categoría' });
-  }
-}
-
 async function searchCategories(req, res) {
   const searchTerm = req.params.term; 
     try {
@@ -124,7 +113,6 @@ async function deleteCategory(req, res) {
 module.exports = {
   createCategory,
   getAllCategories,
-  getCategoryById,
   searchCategories,
   updateCategory,
   deleteCategory

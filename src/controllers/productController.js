@@ -105,7 +105,7 @@ async function getProductsWithFilters(req, res) {
     console.log('Filtros aplicados:', filter);
     
     // Ejecutar la consulta con todos los filtros
-    const products = await Product.find(filter).populate('cat', 'type');
+    const products = await Product.find(filter).populate('cat', 'type').populate('brand', 'brand');
     
     if (!products || products.length === 0) {
       return res.status(400).json({ error: 'No se encontraron productos que cumplan con los filtros' });
@@ -121,7 +121,7 @@ async function getProductsWithFilters(req, res) {
 // Controlador para obtener la lista de productos
 async function getProducts(req, res) {
   try {
-    const products = await Product.find().populate('cat','type');
+    const products = await Product.find().populate('cat','type').populate('brand', 'brand');
     res.json(products);
   } catch (error) {
     console.error(error);
@@ -132,7 +132,7 @@ async function getProducts(req, res) {
   //Destacados para el home
 async function getFeaturedProducts(req, res) {
   try {
-    const featuredProducts = await Product.find({ featured: 'true' });
+    const featuredProducts = await Product.find({ featured: 'true' }).populate('brand', 'brand').populate('cat', 'type');
     res.json(featuredProducts);
   } catch (error) {
     console.error(error);
@@ -147,7 +147,7 @@ async function getNoStockProducts(req, res) {
       $expr: {
         $lt: ["$stock", "$stockMin"]
       }
-    });
+    }).populate('brand', 'brand').populate('cat', 'type');
     res.json(noStockProducts);
   } catch (error) {
     console.error(error);
@@ -158,7 +158,7 @@ async function getNoStockProducts(req, res) {
   //Obtener productos con stock pendiente para el ingreso
 async function getPendingStock(req, res) {
   try {
-    const pendingStockProducts = await Product.find({ pending: { $gt: 0 } });
+    const pendingStockProducts = await Product.find({ pending: { $gt: 0 } }).populate('brand', 'brand');
     res.json(pendingStockProducts);
   } catch (error) {
     console.error(error);
@@ -169,7 +169,7 @@ async function getPendingStock(req, res) {
   //Para entrar a la single card del producto
 async function getProductById(req,res) {
   const productId = req.params.productId;
-  const product = await Product.findById(productId);
+  const product = await Product.findById(productId).populate('brand', 'brand').populate('cat', 'type');
   if (!product) return res.status(404).send("Producto no existe");
 
   const productDetails = {
@@ -191,30 +191,39 @@ async function getProductById(req,res) {
 
 //PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH 
   //Editar un producto
-async function editProduct(req,res) {
+async function editProduct(req, res) {
   const productId = req.params.productId;
   const { desc, brand, stock, price, cat, featured, stockMin, supplier } = req.body;
-  
+
   const newSupplier = await Supplier.findOne({ businessName: supplier });
   if (!newSupplier) return res.status(400).json({ error: 'Proveedor inexistente' });
 
-  const updateOps = { desc, brand, stock, cat, price, featured, stockMin, supplier: newSupplier._id };
+  let updateOps = { desc, stock, cat, price, featured, stockMin, supplier: newSupplier._id };
+
+  // Actualizar la marca si viene como nombre o id
+  if (brand !== undefined) {
+    if (brand === null || brand === '') {
+    } else if (mongoose.Types.ObjectId.isValid(brand)) {
+      const brandExists = await mongoose.model('Brand').findById(brand);
+      if (!brandExists) return res.status(400).json({ error: 'Marca inválida' });
+      updateOps.brand = brandExists._id;
+    } else {
+      const brandDoc = await mongoose.model('Brand').findOne({ brand });
+      if (!brandDoc) return res.status(401).json({ error: 'Marca inválida' });
+      updateOps.brand = brandDoc._id;
+    }
+  }
 
   if (cat !== undefined) {
     if (cat === null || cat === '') {
       // No actualizar la categoría si está vacía
     } else if (mongoose.Types.ObjectId.isValid(cat)) {
-      console.log("entramos a actualizar por ID");
-      console.log(cat);
-      // Verificar que la categoría existe antes de asignarla
-      const categoryExists = await Category.findOne({ type: cat });
+      const categoryExists = await Category.findById(cat);
       if (!categoryExists) return res.status(400).json({ error: 'Categoría inválida' });
       updateOps.cat = categoryExists._id;
     } else {
-      console.log("Buscando categoría por nombre:", cat);
-      const catDoc = await Category.findOne({ type: cat }); // vino por nombre -> buscamos su _id
+      const catDoc = await Category.findOne({ type: cat });
       if (!catDoc) return res.status(400).json({ error: 'Categoría inválida' });
-      console.log("Categoría encontrada:", catDoc);
       updateOps.cat = catDoc._id;
     }
   }
@@ -245,7 +254,6 @@ async function editProduct(req,res) {
         await notification.save();
       }
     }
-    console.log(updateOps);
     const result = await Product.findByIdAndUpdate(productId, updateOps, { new: true });
     if (!result) return res.status(404).json({ error: 'Producto no encontrado' });
 
