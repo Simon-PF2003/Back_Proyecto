@@ -74,7 +74,6 @@ async function createProduct(req,res) {
     return res.status(400).json({ error: 'Formato de proveedores inválido' });
   }
   
-  
   if (!parsedSuppliers || !Array.isArray(parsedSuppliers) || parsedSuppliers.length === 0) {
     return res.status(400).json({ error: 'Debe proporcionar al menos un proveedor' });
   }
@@ -99,8 +98,7 @@ async function createProduct(req,res) {
     }
     supplierIds.push(sup._id);
   }
-
-  console.log("suppliers", supplierIds);
+  
   const newProduct = new Product({ 
     desc, 
     brand: brandId, 
@@ -383,7 +381,7 @@ async function editProduct(req, res) {
   // Actualizar la marca si viene como nombre o id
   if (brand !== undefined) {
     if (brand === null || brand === '') {
-      // No actualizar la marca si está vacía
+      updateOps.brand = null;
     } else if (mongoose.Types.ObjectId.isValid(brand)) {
       const brandExists = await mongoose.model('Brand').findById(brand);
       console.log('Búsqueda marca por id', brandExists);

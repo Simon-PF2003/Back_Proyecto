@@ -11,4 +11,4 @@ Cambios realizados:
 * Eliminacion de atributo category de proveedores (tambien del controller)
 
 Pendiente:
-* CRUD actualizado de proveedores
+* CRUD actualizado de proveedores 
