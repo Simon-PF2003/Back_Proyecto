@@ -1,5 +1,6 @@
 const Supplier = require('../models/supplier');
-const Product = require('../models/product'); 
+const Product = require('../models/product');
+const Brand = require('../models/brand'); 
 const Counter = require('../models/counter');
 const StockNotification = require('../models/stockNotification');
 const User = require('../models/user');
@@ -63,7 +64,7 @@ async function createStockNotification(req, res) {
 // Función combinada para filtros múltiples
 async function getProductsWithFilters(req, res) {
   try {
-    const { search, category, hasStock, minPrice, maxPrice } = req.query;
+    const { search, category, brand, hasStock, minPrice, maxPrice } = req.query;
     
     // Construir el objeto de filtro de MongoDB
     let filter = {};
@@ -76,7 +77,18 @@ async function getProductsWithFilters(req, res) {
     // Filtro de categoría (similar a getProductByCategory)
     if (category && category !== 'all') {
       if (mongoose.Types.ObjectId.isValid(category)) {
-        filter.cat = category;
+        const categoryExists = await Category.findById(category);
+        if (categoryExists) {
+          filter.cat = categoryExists._id;
+        } else {
+          // Si no se encuentra por ID, intentar buscar por nombre
+          const catDoc = await Category.findOne({ type: category });
+          if (catDoc) {
+            filter.cat = catDoc._id;
+          } else {
+            return res.status(404).json({ error: 'Categoría no encontrada' });
+          }
+        }
       } else {
         // Si no es un ObjectId válido, buscar por type
         const catDoc = await Category.findOne({ type: category });
@@ -88,6 +100,29 @@ async function getProductsWithFilters(req, res) {
       }
     }
     
+    if (brand && brand != 'all') {
+      if (mongoose.Types.ObjectId.isValid(brand)) {
+        const brandExists = await Brand.findById(brand);
+        if (brandExists) {
+          filter.brand = brandExists._id;
+        } else {
+          const brandDoc = await Brand.findOne({ brand: brand });
+          if (brandDoc) {
+            filter.brand = brandDoc._id;
+          } else {
+            return res.status(404).json({ error: 'Marca no encontrada' });
+          }
+        }
+      } else {
+        const brandDoc = await Brand.findOne({ brand: brand });
+        if (brandDoc) {
+          filter.brand = brandDoc._id;
+        } else {
+          return res.status(404).json({ error: 'Marca no encontrada' });
+        }
+      }
+    }
+
     // Filtro de stock
     if (hasStock === 'true') {
       filter.stock = { $gt: 0 };
@@ -195,34 +230,75 @@ async function editProduct(req, res) {
   const productId = req.params.productId;
   const { desc, brand, stock, price, cat, featured, stockMin, supplier } = req.body;
 
-  const newSupplier = await Supplier.findOne({ businessName: supplier });
-  if (!newSupplier) return res.status(400).json({ error: 'Proveedor inexistente' });
+  // Actualizar el proveedor si viene como nombre o id
+  let newSupplier = null;
+  if (supplier !== undefined && supplier !== null && supplier !== '') {
+    if (mongoose.Types.ObjectId.isValid(supplier)) {
+      newSupplier = await Supplier.findById(supplier);
+      console.log('Busqueda proveedor por id', newSupplier);
+      if (!newSupplier) {
+        // Si no se encuentra por ID, intentar buscar por nombre
+        console.log('No se encontró proveedor por ID, buscando por nombre:', supplier);
+        newSupplier = await Supplier.findOne({ businessName: supplier });
+        console.log('Busqueda proveedor por nombre', newSupplier);
+      }
+    } else {
+      newSupplier = await Supplier.findOne({ businessName: supplier });
+      console.log('Busqueda proveedor por nombre', newSupplier);
+    }
+    
+    if (!newSupplier) return res.status(400).json({ error: 'Proveedor inexistente' });
+  } else {
+    return res.status(400).json({ error: 'Proveedor requerido' });
+  }
 
   let updateOps = { desc, stock, cat, price, featured, stockMin, supplier: newSupplier._id };
 
   // Actualizar la marca si viene como nombre o id
   if (brand !== undefined) {
     if (brand === null || brand === '') {
+      // No actualizar la marca si está vacía
     } else if (mongoose.Types.ObjectId.isValid(brand)) {
       const brandExists = await mongoose.model('Brand').findById(brand);
-      if (!brandExists) return res.status(400).json({ error: 'Marca inválida' });
-      updateOps.brand = brandExists._id;
+      console.log('Busqueda marca por id', brandExists);
+      if (brandExists) {
+        updateOps.brand = brandExists._id;
+      } else {
+        // Si no se encuentra por ID, intentar buscar por nombre
+        console.log('No se encontró marca por ID, buscando por nombre:', brand);
+        const brandDoc = await mongoose.model('Brand').findOne({ brand });
+        console.log('Busqueda marca por nombre', brandDoc);
+        if (!brandDoc) return res.status(400).json({ error: 'Marca inválida' });
+        updateOps.brand = brandDoc._id;
+      }
     } else {
       const brandDoc = await mongoose.model('Brand').findOne({ brand });
-      if (!brandDoc) return res.status(401).json({ error: 'Marca inválida' });
+      console.log('Busqueda marca por nombre', brandDoc);
+      if (!brandDoc) return res.status(400).json({ error: 'Marca inválida' });
       updateOps.brand = brandDoc._id;
     }
   }
 
   if (cat !== undefined) {
+    console.log('Categoría recibida:', cat);
     if (cat === null || cat === '') {
       // No actualizar la categoría si está vacía
     } else if (mongoose.Types.ObjectId.isValid(cat)) {
       const categoryExists = await Category.findById(cat);
-      if (!categoryExists) return res.status(400).json({ error: 'Categoría inválida' });
-      updateOps.cat = categoryExists._id;
+      console.log('Busqueda por id', categoryExists);
+      if (categoryExists) {
+        updateOps.cat = categoryExists._id;
+      } else {
+        // Si no se encuentra por ID, intentar buscar por nombre
+        console.log('No se encontró por ID, buscando por nombre:', cat);
+        const catDoc = await Category.findOne({ type: cat });
+        console.log('Busqueda por nombre', catDoc);
+        if (!catDoc) return res.status(400).json({ error: 'Categoría inválida' });
+        updateOps.cat = catDoc._id;
+      }
     } else {
       const catDoc = await Category.findOne({ type: cat });
+      console.log('Busqueda por nombre', catDoc);
       if (!catDoc) return res.status(400).json({ error: 'Categoría inválida' });
       updateOps.cat = catDoc._id;
     }
