@@ -3,13 +3,13 @@ const jwt = require('jsonwebtoken');
 
 //POST POST POST POST POST POST POST POST POST POST POST POST POST POST POST POST POST POST POST POST 
 async function createNewSupplier(req,res) {
-  const { cuit, businessName, address, phoneNumber, category } = req.body;
-  const newSupplier = new Supplier({ cuit, businessName, address, phoneNumber, category });
-  /*const supplierExists = await Supplier.findOne({ cuit: cuit });
+  const { cuit, businessName, address, phoneNumber } = req.body;
+  const newSupplier = new Supplier({ cuit, businessName, address, phoneNumber });
+  const supplierExists = await Supplier.findOne({ cuit: cuit });
   
   if (supplierExists) {
     return res.status(400).json({ message: 'El proveedor agregado ya existe' });
-  }*/
+  }
 
   const token = jwt.sign({ _id: newSupplier._id }, 'secretKey');
   await newSupplier.save();
@@ -63,8 +63,8 @@ async function getAllSuppliers(req,res)  {
 //PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH PATCH 
 async function editSupplier(req,res) {
     const supId = req.params.supId;
-    const { cuit, businessName, address, phoneNumber, category } = req.body;
-    const updateDetails = { cuit, businessName, address, phoneNumber, category };
+    const { cuit, businessName, address, phoneNumber } = req.body;
+    const updateDetails = { cuit, businessName, address, phoneNumber };
   
     try {
       const result = await Supplier.findByIdAndUpdate(supId, updateDetails, { new: true });

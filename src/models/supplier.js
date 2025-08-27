@@ -5,7 +5,10 @@ const supplierSchema = new Schema ({
     businessName: String,
     address: String,
     phoneNumber: String,
-    category: String,
+    products: [{ 
+        type: Schema.Types.ObjectId, 
+        ref: 'Product'             
+    }],
 }, {
     timestamps: true
 });

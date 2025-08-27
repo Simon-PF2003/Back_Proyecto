@@ -6,4 +6,9 @@ Parte back del TP
 
 Cambios realizados:
 
-* Filtro por busqueda incluye tanto descripcion como codigo de producto (code)
+* Creacion relacion muchos a muchos productos a proveedores.
+* Actualizacion crud productos como corresponde.
+* Eliminacion de atributo category de proveedores (tambien del controller)
+
+Pendiente:
+* CRUD actualizado de proveedores

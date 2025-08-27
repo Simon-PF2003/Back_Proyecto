@@ -12,23 +12,118 @@ const mongoose = require('mongoose');
 
 //POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS POSTS 
 async function createProduct(req,res) {
-  const { desc, brand, stock, price, cat, stockMin, featured, supplier } = req.body;
+  const { desc, brand, stock, price, cat, stockMin, featured, suppliers } = req.body;
   if (!req.file) {
     return res.status(400).json({ error: 'No se ha adjuntado una imagen' });
   }
-  if (!mongoose.Types.ObjectId.isValid(cat)) {
-    return res.status(400).json({ error: 'categoryId inválido' });
+
+  let brandId = null;
+  if (brand !== undefined && brand !== null && brand !== '') {
+    if (mongoose.Types.ObjectId.isValid(brand)) {
+      const brandExists = await Brand.findById(brand);
+      if (brandExists) {
+        brandId = brandExists._id;
+      } else {
+        const brandDoc = await Brand.findOne({ brand: brand });
+        if (brandDoc) {
+          brandId = brandDoc._id;
+        } else {
+          return res.status(400).json({ error: 'Marca no encontrada' });
+        }
+      }
+    } else {
+      const brandDoc = await Brand.findOne({ brand: brand });
+      if (brandDoc) {
+        brandId = brandDoc._id;
+      } else {
+        return res.status(400).json({ error: 'Marca no encontrada' });
+      }
+    }
   }
+
+  let categoryId = null;
+  if (mongoose.Types.ObjectId.isValid(cat)) {
+    const categoryExists = await Category.findById(cat);
+    if (categoryExists) {
+      categoryId = categoryExists._id;
+    } else {
+      const catDoc = await Category.findOne({ type: cat });
+      if (catDoc) {
+        categoryId = catDoc._id;
+      } else {
+        return res.status(400).json({ error: 'Categoría no encontrada' });
+      }
+    }
+  } else {
+    const catDoc = await Category.findOne({ type: cat });
+    if (catDoc) {
+      categoryId = catDoc._id;
+    } else {
+      return res.status(400).json({ error: 'Categoría no encontrada' });
+    }
+  }
+  
+  let parsedSuppliers;
+  try {
+    if (typeof suppliers === 'string') {
+      parsedSuppliers = JSON.parse(suppliers);
+    } else {
+      parsedSuppliers = suppliers;
+    }
+  } catch (error) {
+    return res.status(400).json({ error: 'Formato de proveedores inválido' });
+  }
+  
+  
+  if (!parsedSuppliers || !Array.isArray(parsedSuppliers) || parsedSuppliers.length === 0) {
+    return res.status(400).json({ error: 'Debe proporcionar al menos un proveedor' });
+  }
+
   const imageFileName = req.file.filename; // Nombre del archivo en el servidor
   const image = 'uploadsProductsImages/' + imageFileName; // Ruta relativa de la imagen
-  const sup = await Supplier.findOne({ businessName: supplier });
-  console.log("supplier", sup);
-  const newProduct = new Product({ desc, brand, stock, price, cat, stockMin, featured, supplier: sup._id, image });
+  
+  const supplierIds = [];
+  for (const supplierData of parsedSuppliers) {
+    let sup;
+    if (mongoose.Types.ObjectId.isValid(supplierData)) {
+      console.log('Searching supplier by ID:', supplierData);
+      sup = await Supplier.findById(supplierData);
+      if (!sup) {
+        sup = await Supplier.findOne({ businessName: supplierData });
+      }
+    } else {
+        sup = await Supplier.findOne({ businessName: supplierData });
+    }
+    if (!sup) {
+      return res.status(400).json({ error: `Proveedor no encontrado: ${supplierData}` });
+    }
+    supplierIds.push(sup._id);
+  }
+
+  console.log("suppliers", supplierIds);
+  const newProduct = new Product({ 
+    desc, 
+    brand: brandId, 
+    stock, 
+    price, 
+    cat: categoryId, 
+    stockMin, 
+    featured, 
+    suppliers: supplierIds, 
+    image 
+  });
   const product = await Product.findOne({ desc: { $regex: new RegExp(`^${desc}$`, 'i') } }); //No case sensitive
   if (product) {
     return res.status(401).json({ error: 'El producto ya existe' });
   } else {
     newProduct.code = await Counter.getNext('productos');
+    
+    for (const supplierId of supplierIds) {
+      await Supplier.findByIdAndUpdate(supplierId, {
+        $addToSet: { products: newProduct._id }
+      });
+    }
+    
     const token = jwt.sign({ _id: newProduct._id }, 'secretKey');
     await newProduct.save();
     console.log(newProduct);
@@ -160,7 +255,10 @@ async function getProductsWithFilters(req, res) {
 // Controlador para obtener la lista de productos
 async function getProducts(req, res) {
   try {
-    const products = await Product.find().populate('cat','type').populate('brand', 'brand');
+    const products = await Product.find()
+      .populate('cat','type')
+      .populate('brand', 'brand')
+      .populate('suppliers', 'businessName');
     res.json(products);
   } catch (error) {
     console.error(error);
@@ -208,7 +306,10 @@ async function getPendingStock(req, res) {
   //Para entrar a la single card del producto
 async function getProductById(req,res) {
   const productId = req.params.productId;
-  const product = await Product.findById(productId).populate('brand', 'brand').populate('cat', 'type');
+  const product = await Product.findById(productId)
+    .populate('brand', 'brand')
+    .populate('cat', 'type')
+    .populate('suppliers', 'businessName')
   if (!product) return res.status(404).send("Producto no existe");
 
   const productDetails = {
@@ -220,7 +321,7 @@ async function getProductById(req,res) {
     cat: product.cat,
     featured: product.featured,
     stockMin: product.stockMin,
-    supplier: product.supplier,
+    suppliers: product.suppliers,
     pending: 0,
     image: `http://localhost:3000/${product.image}`
   };
@@ -232,31 +333,52 @@ async function getProductById(req,res) {
   //Editar un producto
 async function editProduct(req, res) {
   const productId = req.params.productId;
-  const { desc, brand, stock, price, cat, featured, stockMin, supplier } = req.body;
-
-  // Actualizar el proveedor si viene como nombre o id
-  let newSupplier = null;
-  if (supplier !== undefined && supplier !== null && supplier !== '') {
-    if (mongoose.Types.ObjectId.isValid(supplier)) {
-      newSupplier = await Supplier.findById(supplier);
-      console.log('Busqueda proveedor por id', newSupplier);
-      if (!newSupplier) {
-        // Si no se encuentra por ID, intentar buscar por nombre
-        console.log('No se encontró proveedor por ID, buscando por nombre:', supplier);
-        newSupplier = await Supplier.findOne({ businessName: supplier });
-        console.log('Busqueda proveedor por nombre', newSupplier);
+  const { desc, brand, stock, price, cat, featured, stockMin, suppliers } = req.body;
+  
+  // Validar y actualizar proveedores si se envían
+  let newSupplierIds = [];
+  if (suppliers !== undefined && suppliers !== null) {
+    let parsedSuppliers;
+    try {
+      if (typeof suppliers === 'string') {
+        parsedSuppliers = JSON.parse(suppliers);
+      } else {
+        parsedSuppliers = suppliers;
       }
-    } else {
-      newSupplier = await Supplier.findOne({ businessName: supplier });
-      console.log('Busqueda proveedor por nombre', newSupplier);
+    } catch (error) {
+      return res.status(400).json({ error: 'Formato de proveedores inválido' });
     }
     
-    if (!newSupplier) return res.status(400).json({ error: 'Proveedor inexistente' });
+    if (!Array.isArray(parsedSuppliers) || parsedSuppliers.length === 0) {
+      return res.status(400).json({ error: 'Debe proporcionar al menos un proveedor' });
+    }
+
+    for (const supplierData of parsedSuppliers) {
+      let newSupplier;
+      console.log('Processing supplier for edit:', supplierData);
+      if (mongoose.Types.ObjectId.isValid(supplierData)) {
+        newSupplier = await Supplier.findById(supplierData);
+        console.log('Búsqueda proveedor por id', newSupplier);
+        if (!newSupplier) {
+          console.log('No se encontró proveedor por ID, buscando por nombre:', supplierData);
+          newSupplier = await Supplier.findOne({ businessName: supplierData });
+          console.log('Búsqueda proveedor por nombre', newSupplier);
+        }
+      } else {
+        newSupplier = await Supplier.findOne({ businessName: supplierData });
+        console.log('Búsqueda proveedor por nombre', newSupplier);
+      }
+      
+      if (!newSupplier) {
+        return res.status(400).json({ error: `Proveedor inexistente: ${supplierData}` });
+      }
+      newSupplierIds.push(newSupplier._id);
+    }
   } else {
-    return res.status(400).json({ error: 'Proveedor requerido' });
+    return res.status(400).json({ error: 'Proveedores requeridos' });
   }
 
-  let updateOps = { desc, stock, cat, price, featured, stockMin, supplier: newSupplier._id };
+  let updateOps = { desc, stock, cat, price, featured, stockMin, suppliers: newSupplierIds };
 
   // Actualizar la marca si viene como nombre o id
   if (brand !== undefined) {
@@ -264,20 +386,20 @@ async function editProduct(req, res) {
       // No actualizar la marca si está vacía
     } else if (mongoose.Types.ObjectId.isValid(brand)) {
       const brandExists = await mongoose.model('Brand').findById(brand);
-      console.log('Busqueda marca por id', brandExists);
+      console.log('Búsqueda marca por id', brandExists);
       if (brandExists) {
         updateOps.brand = brandExists._id;
       } else {
         // Si no se encuentra por ID, intentar buscar por nombre
         console.log('No se encontró marca por ID, buscando por nombre:', brand);
         const brandDoc = await mongoose.model('Brand').findOne({ brand });
-        console.log('Busqueda marca por nombre', brandDoc);
+        console.log('Búsqueda marca por nombre', brandDoc);
         if (!brandDoc) return res.status(400).json({ error: 'Marca inválida' });
         updateOps.brand = brandDoc._id;
       }
     } else {
       const brandDoc = await mongoose.model('Brand').findOne({ brand });
-      console.log('Busqueda marca por nombre', brandDoc);
+      console.log('Búsqueda marca por nombre', brandDoc);
       if (!brandDoc) return res.status(400).json({ error: 'Marca inválida' });
       updateOps.brand = brandDoc._id;
     }
@@ -289,20 +411,20 @@ async function editProduct(req, res) {
       // No actualizar la categoría si está vacía
     } else if (mongoose.Types.ObjectId.isValid(cat)) {
       const categoryExists = await Category.findById(cat);
-      console.log('Busqueda por id', categoryExists);
+      console.log('Búsqueda por id', categoryExists);
       if (categoryExists) {
         updateOps.cat = categoryExists._id;
       } else {
         // Si no se encuentra por ID, intentar buscar por nombre
         console.log('No se encontró por ID, buscando por nombre:', cat);
         const catDoc = await Category.findOne({ type: cat });
-        console.log('Busqueda por nombre', catDoc);
+        console.log('Búsqueda por nombre', catDoc);
         if (!catDoc) return res.status(400).json({ error: 'Categoría inválida' });
         updateOps.cat = catDoc._id;
       }
     } else {
       const catDoc = await Category.findOne({ type: cat });
-      console.log('Busqueda por nombre', catDoc);
+      console.log('Búsqueda por nombre', catDoc);
       if (!catDoc) return res.status(400).json({ error: 'Categoría inválida' });
       updateOps.cat = catDoc._id;
     }
@@ -315,6 +437,28 @@ async function editProduct(req, res) {
   try {
     const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
+
+    const oldSupplierIds = product.suppliers || [];
+    
+    const suppliersToRemove = oldSupplierIds.filter(oldId => 
+      !newSupplierIds.some(newId => newId.equals(oldId))
+    );
+    
+    for (const supplierId of suppliersToRemove) {
+      await Supplier.findByIdAndUpdate(supplierId, {
+        $pull: { products: productId }
+      });
+    }
+    
+    const suppliersToAdd = newSupplierIds.filter(newId => 
+      !oldSupplierIds.some(oldId => oldId.equals(newId))
+    );
+    
+    for (const supplierId of suppliersToAdd) {
+      await Supplier.findByIdAndUpdate(supplierId, {
+        $addToSet: { products: productId }
+      });
+    }
 
     if (typeof stock === 'number' && stock > product.stock) {
       const stockNotification = await StockNotification.find({ productId, notified: false });
@@ -457,15 +601,29 @@ async function updateStock(req, res) {
 //DELETE DELETE DELETE DELETE DELETE DELETE DELETE DELETE DELETE DELETE DELETE DELETE DELETE DELETE 
 async function deleteProduct(req,res) {
   const productId = req.params.productId;
+  console.log('Eliminando producto con ID:', productId);
   try {
-    const deletedProduct = await Product.findByIdAndDelete(productId);  
-
-    if (!deletedProduct) {
+    const productToDelete = await Product.findById(productId);
+    
+    if (!productToDelete) {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
+
+    // Eliminar el producto de todos los proveedores asociados
+    if (productToDelete.suppliers && productToDelete.suppliers.length > 0) {
+      for (const supplierId of productToDelete.suppliers) {
+        await Supplier.findByIdAndUpdate(supplierId, {
+          $pull: { products: productId }
+        });
+        console.log(`Producto eliminado del proveedor ${supplierId}`);
+      }
+    }
+
+    const deletedProduct = await Product.findByIdAndDelete(productId);
+
     res.json({ message: 'Producto eliminado correctamente' });
   } catch (error) {
-    console.error(error);
+    console.error('Error al eliminar el producto:', error);
     res.status(500).json({ error: 'Error al eliminar el producto' });
   }
 }
