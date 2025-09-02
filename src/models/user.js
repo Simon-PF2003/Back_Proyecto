@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema ({
     role: String,
     accepted: Boolean,
     verificationCode: String,
+    verificationCodeExpires: Date,
     discountId: { 
         type: Schema.Types.ObjectId, 
         ref: 'Discount',

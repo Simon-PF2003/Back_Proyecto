@@ -3,6 +3,7 @@ const User = require('../models/user');
 const Bill = require('../models/bill')
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const validator = require('validator');
 const carpetaRelativa = '';
 const rutaAbsoluta = path.resolve(carpetaRelativa);
@@ -67,61 +68,133 @@ async function addUser(req, res) {
   }
 }
 
-  //Manda el codigo para recuperar la contraseña
-async function sendCode(req,res) {
-  const { email, code } = req.body;
-   try {
+async function sendCode(req, res) {
+  const BCRYPT_ROUNDS = 10;
+  const CODE_TTL_MIN = 10;     // vence en 10 minutos
+
+  try {
+    const { email } = req.body;
+
+    // Respuesta genérica para evitar enumeración
+    if (!email || !validator.isEmail(email)) {
+      return res.status(200).json({ mensaje: 'Si el email existe, enviaremos un código.' });
+    }
+
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ mensaje: 'Usuario no encontrado.' });
+      return res.status(200).json({ mensaje: 'Si el email existe, enviaremos un código.' });
     }
-    user.verificationCode = code;
+
+    const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0'); 
+
+    // Guardar HASH + vencimiento
+    const hash = await bcrypt.hash(code, BCRYPT_ROUNDS);
+    user.verificationCode = hash;
+    user.verificationCodeExpires = new Date(Date.now() + CODE_TTL_MIN * 60 * 1000);
     await user.save();
 
-    const opcionesCorreo = {
+    // Resetear estado en memoria (nuevo código, cero intentos, no verificado)
+    resetAttempts(email);
+    clearVerified(email);
+
+    // Enviar correo con el código plano
+    await transporter.sendMail({
       from: process.env.ENTERPRISE_MAIL,
       to: email,
       subject: 'Código de verificación',
-      text: `Tu código de verificación es: ${code}`,
-    };
-
-    if (!validator.isEmail(email)) {
-      return res.status(401).send('Correo electrónico no válido');
-    }
-
-    transporter.sendMail(opcionesCorreo, (error, info) => {
-      if (error) {
-        console.error('Error al enviar el correo electrónico:', error);
-        res.status(500).json({ mensaje: 'Error al enviar el correo electrónico' });
-      } else {
-        console.log('Correo electrónico enviado:', info.response);
-        res.status(200).json({ mensaje: 'Correo electrónico enviado correctamente' });
-      }
+      text: `Tu código de verificación es: ${code}\n\nVence en ${CODE_TTL_MIN} minutos.`
     });
+
+    return res.status(200).json({ mensaje: 'Si el email existe, enviaremos un código.' });
   } catch (error) {
-    console.error('Error al procesar la solicitud:', error);
-    res.status(500).json({ mensaje: 'Error al procesar la solicitud.' });
+    console.error('Error en /sendCode:', error);
+    // Mantenemos la respuesta genérica por seguridad
+    return res.status(200).json({ mensaje: 'Si el email existe, enviaremos un código.' });
   }
 }
 
-  //Compara el codigo de verificacion para reestablecer la contraseña
-async function compareCode(req,res) {
-  const { email, code } = req.body;
+async function compareCode(req, res) {
+  // Constantes locales
+  const MAX_ATTEMPTS = 3;       // a la 3ª errada, invalidamos el código
+  const VERIFY_WINDOW_MIN = 10; // ventana para permitir newPassword tras verificar
 
   try {
-    // Buscar el usuario por correo electrónico
+    const { email, code } = req.body;
+
     const user = await User.findOne({ email });
-    if (user && user.verificationCode === code) {
-      user.verificationCode = null;
-      return res.status(200).json({ message: 'Código verificado exitosamente.' });
-    } else {
-      return res.status(400).json({ message: 'Código incorrecto.' });
+    if (!user || !user.verificationCode || !user.verificationCodeExpires) {
+      console.log('codigo invalido');
+      return res.status(400).json({ message: 'Código inválido.' });  
     }
+
+    // Vencido
+    if (user.verificationCodeExpires.getTime() < Date.now()) {
+      user.verificationCode = null;
+      user.verificationCodeExpires = null;
+      await user.save();
+      resetAttempts(email);
+      clearVerified(email);
+      console.log('codigo vencido');
+      return res.status(410).json({ message: 'Código vencido. Solicitá uno nuevo.' });
+    }
+
+    // Comparar hash
+    const ok = await bcrypt.compare(code, user.verificationCode);
+    if (!ok) {
+      // Intento fallido
+      incAttempts(email);
+      const left = MAX_ATTEMPTS - getAttempts(email);
+      if (left <= 0) {
+        // Alcanza el máximo: invalidamos el código y obligamos a pedir otro
+        user.verificationCode = null;
+        user.verificationCodeExpires = null;
+        await user.save();
+        resetAttempts(email);
+        clearVerified(email);
+        console.log('Maximo intentos');
+        return res.status(429).json({ message: 'Se alcanzó el máximo de intentos. Pedí un nuevo código.' });
+      }
+      console.log('codigo incorrecto');
+      return res.status(400).json({ message: 'Código incorrecto.', intentosRestantes: left });
+    }
+
+    // Éxito: limpiamos el código y habilitamos ventana de cambio de contraseña
+    user.verificationCode = null;
+    user.verificationCodeExpires = null;
+    await user.save();
+
+    resetAttempts(email);
+    markVerified(email, VERIFY_WINDOW_MIN);
+
+    return res.status(200).json({ message: 'Código verificado.' });
   } catch (error) {
-    console.error('Error al verificar el código y restablecer la contraseña:', error);
+    console.error('Error en /compareCode:', error);
     return res.status(500).json({ message: 'Error interno del servidor.' });
   }
 }
+
+// Cosas que usa lo de arriba.
+// Contador de intentos por email para el código vigente
+const attemptsByEmail = new Map();            // email -> attempts (0..3)
+// Marca de "email verificado" para permitir newPassword durante una ventana corta
+const verifiedEmails = new Map();             // email -> expiresAt (ms)
+
+// Helpers de attempts
+function getAttempts(email) { return attemptsByEmail.get(email) || 0; }
+function incAttempts(email) { attemptsByEmail.set(email, getAttempts(email) + 1); }
+function resetAttempts(email) { attemptsByEmail.delete(email); }
+
+// Helpers de verificado
+function markVerified(email, minutes) {
+  verifiedEmails.set(email, Date.now() + minutes * 60 * 1000);
+}
+function isVerified(email) {
+  const exp = verifiedEmails.get(email);
+  if (!exp) return false;
+  if (Date.now() > exp) { verifiedEmails.delete(email); return false; }
+  return true;
+}
+function clearVerified(email) { verifiedEmails.delete(email); }
 
 async function signUp(req,res) {
   const role = 'Usuario Comun';
@@ -658,29 +731,47 @@ async function modifyStatus(req,res) {
   });
 }
 
-async function newPassword(req,res) {
-  const { email, password } = req.body;
+async function newPassword(req, res) {
+  // Constantes locales
+  const BCRYPT_ROUNDS = 10;
+  // Cuenta como “especial” cualquier carácter no alfanumérico (si no querés que el espacio cuente, usá /[^A-Za-z0-9\s]/)
+  const SPECIAL = /[^A-Za-z0-9]/;
+
+  // Normalizo inputs
+  const email = String(req.body?.email ?? '').trim().toLowerCase();
+  const password = String(req.body?.password ?? '');
 
   try {
-    const client = await User.findOne({ email }).exec();
-
-    if (!client) {
-      console.log('No se encontró ningún cliente');
-      return res.status(404).json({ mensaje: 'Clientes no encontrados' });
-    } else {
-
-       if (password.length < 8 || !/[!@#$%^&*()_+{}\[\]:;<>,.?~\\-]/.test(password)) {
-    return res.status(400).send('La contraseña debe tener al menos 8 caracteres de longitud y contener al menos un carácter especial');
-  }
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-      client.password = hashedPassword;
-      await client.save();
-      res.status(200).json({ mensaje: 'Contraseña modificada correctamente' });
+    // Debe venir de un email verificado recientemente (marcado en memoria)
+    if (!isVerified(email)) {
+      return res.status(401).json({ mensaje: 'Verificación requerida o expirada. Validá el código nuevamente.' });
     }
+
+    const client = await User.findOne({ email }).exec();
+    if (!client) {
+      clearVerified(email);
+      return res.status(404).json({ mensaje: 'Clientes no encontrados' });
+    }
+
+    // Política mínima: al menos 8 caracteres y 1 carácter especial
+    if (password.length < 8 || !SPECIAL.test(password)) {
+      return res.status(400).json({
+        mensaje: 'La contraseña debe tener al menos 8 caracteres de longitud y contener al menos un carácter especial'
+      });
+    }
+
+    const salt = await bcrypt.genSalt(BCRYPT_ROUNDS);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    client.password = hashedPassword;
+
+    // NO limpiamos verificationCode acá; eso se hace en compareCode
+    await client.save();
+
+    clearVerified(email); // ya no hace falta mantener la marca de verificación
+    return res.status(200).json({ mensaje: 'Contraseña modificada correctamente' });
   } catch (error) {
     console.error('Error al cambiar la contraseña:', error);
-    return res.status(500).json({ mensaje: 'Error al cambiar la contraseña', error: error });
+    return res.status(500).json({ mensaje: 'Error al cambiar la contraseña', error });
   }
 }
 
