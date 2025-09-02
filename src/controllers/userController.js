@@ -631,8 +631,8 @@ async function acceptUser(req,res) {
     const opcionesCorreo = {
       from:process.env.ENTERPRISE_MAIL,
       to: email,
-      subject: 'MPS SQUARE - Aceptación de usuario',
-      text: `Bienvenido a MPS SQUARE. Tu cuenta ha sido aceptada. Puedes iniciar sesión con tu correo electrónico y la contraseña: ${password}. Puede modificar su contraseña desde la sección "¿Olvidaste tu contraseña?" del login si asi lo desea.`,
+      subject: 'IronPeaks Tech - Aceptación de usuario',
+      text: `Bienvenido a IRONPEAKS Tech. Tu cuenta ha sido aceptada. Puedes iniciar sesión con tu correo electrónico y la contraseña: ${password}. Puede modificar su contraseña desde la sección "¿Olvidaste tu contraseña?" del login si asi lo desea.`,
     };
 
     if (!validator.isEmail(email)) {
@@ -669,7 +669,7 @@ async function rejectUser(req,res) {
       const opcionesCorreo = {
         from: process.env.ENTERPRISE_MAIL,
         to: email,
-        subject: 'MPS SQUARE - Solicitud rechazada',
+        subject: 'IRONPEAKS Tech - Solicitud rechazada',
         text: `Lamentablemente, tu solicitud ha sido rechazada. Si tienes alguna pregunta, por favor contáctanos.`,
       };
   

@@ -465,7 +465,7 @@ async function editProduct(req, res) {
         const mailOptions = {
           from: process.env.ENTERPRISE_MAIL,
           to: user.email,
-          subject: 'MPS SQUARE: Notificación de Stock',
+          subject: 'IRONPEAKS Tech: Notificación de Stock',
           text: `El producto ${desc || product.desc} ya está disponible en stock.`
         };
         transporter.sendMail(mailOptions, (error, info) => {
@@ -574,7 +574,7 @@ async function updateStock(req, res) {
         const mailOptions = {
           from: process.env.ENTERPRISE_MAIL,
           to: user.email,
-          subject: 'MPS SQUARE: Notificación de Stock',
+          subject: 'IRONPEAKS Tech: Notificación de Stock',
           text: `El producto ${productDetails.desc} ya tiene stock`
         };
         transporter.sendMail(mailOptions, (error, info) => {
